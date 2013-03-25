@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VERSION=$(cat version.txt)
+
 source flashtool.inc
 
 wget -q --spider $VERSION_CHECK_URL
