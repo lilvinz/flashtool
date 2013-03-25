@@ -14,11 +14,11 @@ TOP ?= $(realpath $(WHEREAMI)/)/
 export AT := @
 
 ifndef V
- export V0 :=
- export V1 := $(AT)
+    export V0 :=
+    export V1 := $(AT)
 else ifeq ($(V), 0)
- export V0 := $(AT)
- export V1 := $(AT)
+    export V0 := $(AT)
+    export V1 := $(AT)
 else ifeq ($(V), 1)
 endif
 
@@ -37,10 +37,10 @@ COPY ?= cp
 # Test if quotes are needed for the echo-command
 result = ${shell echo "test"}
 ifeq (${result}, test)
-	quote := '
+    quote := '
 # This line is just to clear out the single quote above '
 else
-	quote :=
+    quote :=
 endif
 
 MSG_VERSION            = ${quote} VERSION   $(MSG_EXTRA) ${quote}
@@ -84,20 +84,20 @@ PACKAGE_DIR := $(BUILD_DIR)$(PACKAGE_NAME)/
 ALL_OUTFILES := $(addprefix $(PACKAGE_DIR),$(notdir $(PACKAGE_FILES))) $(PACKAGE_DIR)/version.txt
 
 .PHONY: all
-all: $(BUILD_DIR)$(PACKAGE_NAME).tar.xz
+all: $(BUILD_DIR)$(PACKAGE_NAME).tar.bz2
 
-$(BUILD_DIR)$(PACKAGE_NAME).tar.xz: $(ALL_OUTFILES) FORCE | $(BUILD_DIR)
-	@echo $(MSG_TAR) $(call toprel, $@)
+$(BUILD_DIR)$(PACKAGE_NAME).tar.bz2: $(ALL_OUTFILES) FORCE | $(PACKAGE_DIR)
 	$(V1) $(COPY) -r $(WHEREAMI)$(PROGRAMMER)/* $(PACKAGE_DIR)
 	$(V1) $(COPY) -r $(WHEREAMI)tools $(PACKAGE_DIR)
-	$(V1) cd $(BUILD_DIR) && $(TAR) -cpJf $(PACKAGE_NAME).tar.xz $(PACKAGE_NAME)
+	@echo $(MSG_TAR) $(call toprel, $@)
+	$(V1) cd $(BUILD_DIR) && $(TAR) -cpjf $(PACKAGE_NAME).tar.bz2 $(PACKAGE_NAME)
 
 .PHONY: clean
 clean:
 	@echo $(MSG_CLEAN) $(call toprel, $(PACKAGE_DIR))
-	$(V1) [ ! -d "$(BUILD_DIR)" ] || $(REMOVE) -r $(PACKAGE_DIR)
-	@echo $(MSG_CLEAN) $(call toprel, $(BUILD_DIR)$(PACKAGE_NAME).tar.xz)
-	$(V1) [ ! -f "$(BUILD_DIR)$(PACKAGE_NAME).tar.xz" ] || $(REMOVE) -r $(BUILD_DIR)$(PACKAGE_NAME).tar.xz
+	$(V1) [ ! -d "$(PACKAGE)" ] || $(REMOVE) -r $(PACKAGE_DIR)
+	@echo $(MSG_CLEAN) $(call toprel, $(BUILD_DIR)$(PACKAGE_NAME).tar.bz2)
+	$(V1) [ ! -f "$(BUILD_DIR)$(PACKAGE_NAME).tar.bz2" ] || $(REMOVE) -r $(BUILD_DIR)$(PACKAGE_NAME).tar.bz2
 
 $(PACKAGE_DIR):
 	$(V1) $(MKDIR) $@
