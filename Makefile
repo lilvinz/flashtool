@@ -60,23 +60,24 @@ BUILD_DIR ?= $(TOP)build/
 GIT_DATE := $(shell $(GIT) log -n1 --no-color --format=format:%ci HEAD)
 
 # try to get remote tracking branch
-GIT_BRANCH := $(shell git rev-parse --symbolic-full-name --abbrev-ref @{u} 2> /dev/null)
+GIT_BRANCH ?= $(shell git rev-parse --symbolic-full-name --abbrev-ref @{u} 2> /dev/null)
 
 # if that failed, get local branch
 ifeq ($(GIT_BRANCH),@{u})
     GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 endif
 
+# check if we are dirty
 ifneq ($(shell git diff HEAD),)
-GIT_BRANCH := $(join $(GIT_BRANCH),-dirty)
+    GIT_BRANCH := $(join $(GIT_BRANCH),-dirty)
 endif
 
-GIT_HASH := $(shell $(GIT) rev-parse --verify --short=10 HEAD)
+GIT_COMMIT := $(shell $(GIT) rev-parse --verify --short=10 HEAD)
 
 PACKAGE_DATE := $(shell date -u -d "$(GIT_DATE)" +%Y%m%d_%H%M%S)
 PACKAGE_BRANCH := $(subst _,-,$(subst /,-,$(GIT_BRANCH)))
-PACKAGE_HASH := $(GIT_HASH)
-PACKAGE_NAME := $(PRODUCT_NAME)_$(PACKAGE_BRANCH)_$(PACKAGE_DATE)_$(PACKAGE_HASH)
+PACKAGE_COMMIT := $(GIT_COMMIT)
+PACKAGE_NAME := $(PRODUCT_NAME)_$(PACKAGE_BRANCH)_$(PACKAGE_DATE)_$(PACKAGE_COMMIT)
 PACKAGE_FILES := $(wildcard $(PRODUCT_FILES))
 PACKAGE_DIR := $(BUILD_DIR)$(PACKAGE_NAME)/
 
@@ -118,18 +119,18 @@ $(PACKAGE_DIR)/version.txt:
 	@echo $(MSG_VERSION) $(call toprel, $@)
 	$(V1) echo $(PACKAGE_NAME) > $@
 
-#$(info WHEREAMI=$(WHEREAMI))
-#$(info TOP=$(TOP))
-#$(info PRODUCT_NAME=$(PRODUCT_NAME))
-#$(info PRODUCT_FILES=$(PRODUCT_FILES))
-#$(info BUILD_DIR=$(BUILD_DIR))
-#$(info GIT_DATE=$(GIT_DATE))
-#$(info GIT_BRANCH=$(GIT_BRANCH))
-#$(info GIT_HASH=$(GIT_HASH))
-#$(info PACKAGE_DATE=$(PACKAGE_DATE))
-#$(info PACKAGE_BRANCH=$(PACKAGE_BRANCH))
-#$(info PACKAGE_HASH=$(PACKAGE_HASH))
-#$(info PACKAGE_NAME=$(PACKAGE_NAME))
-#$(info PACKAGE_DIR=$(PACKAGE_DIR))
-#$(info ALL_OUTFILES=$(ALL_OUTFILES))
+$(info WHEREAMI=$(WHEREAMI))
+$(info TOP=$(TOP))
+$(info PRODUCT_NAME=$(PRODUCT_NAME))
+$(info PRODUCT_FILES=$(PRODUCT_FILES))
+$(info BUILD_DIR=$(BUILD_DIR))
+$(info GIT_DATE=$(GIT_DATE))
+$(info GIT_BRANCH=$(GIT_BRANCH))
+$(info GIT_COMMIT=$(GIT_COMMIT))
+$(info PACKAGE_DATE=$(PACKAGE_DATE))
+$(info PACKAGE_BRANCH=$(PACKAGE_BRANCH))
+$(info PACKAGE_COMMIT=$(PACKAGE_COMMIT))
+$(info PACKAGE_NAME=$(PACKAGE_NAME))
+$(info PACKAGE_DIR=$(PACKAGE_DIR))
+$(info ALL_OUTFILES=$(ALL_OUTFILES))
 
