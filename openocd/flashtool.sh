@@ -2,7 +2,7 @@
 
 VERSION=$(cat version.txt)
 
-source flashtool_linux.inc
+source include_linux.sh
 
 wget -q --spider $VERSION_CHECK_URL
 

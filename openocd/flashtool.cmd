@@ -4,7 +4,7 @@
 REM read in version information
 set /p VERSION=<version.txt
 
-call flashtool_windows.inc
+call include_windows.cmd
 
 tools\win32\wget.exe -q --spider %VERSION_CHECK_URL%
 
