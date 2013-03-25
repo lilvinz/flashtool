@@ -1,0 +1,124 @@
+<html lang="en">
+<head>
+<title>Boundary Scan Commands - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="JTAG-Commands.html#JTAG-Commands" title="JTAG Commands">
+<link rel="next" href="TFTP.html#TFTP" title="TFTP">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 25 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="Boundary-Scan-Commands"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="TFTP.html#TFTP">TFTP</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="JTAG-Commands.html#JTAG-Commands">JTAG Commands</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">19 Boundary Scan Commands</h2>
+
+<p>One of the original purposes of JTAG was to support
+boundary scan based hardware testing. 
+Although its primary focus is to support On-Chip Debugging,
+OpenOCD also includes some boundary scan commands.
+
+<h3 class="section">19.1 SVF: Serial Vector Format</h3>
+
+<p><a name="index-Serial-Vector-Format-517"></a><a name="index-SVF-518"></a>
+The Serial Vector Format, better known as <dfn>SVF</dfn>, is a
+way to represent JTAG test patterns in text files. 
+In a debug session using JTAG for its transport protocol,
+OpenOCD supports running such test files.
+
+<div class="defun">
+&mdash; Command: <b>svf</b><var> filename </var>[<samp><span class="option">quiet</span></samp>]<var><a name="index-svf-519"></a></var><br>
+<blockquote><p>This issues a JTAG reset (Test-Logic-Reset) and then
+runs the SVF script from <samp><span class="file">filename</span></samp>. 
+Unless the <samp><span class="option">quiet</span></samp> option is specified,
+each command is logged before it is executed. 
+</p></blockquote></div>
+
+<h3 class="section">19.2 XSVF: Xilinx Serial Vector Format</h3>
+
+<p><a name="index-Xilinx-Serial-Vector-Format-520"></a><a name="index-XSVF-521"></a>
+The Xilinx Serial Vector Format, better known as <dfn>XSVF</dfn>, is a
+binary representation of SVF which is optimized for use with
+Xilinx devices. 
+In a debug session using JTAG for its transport protocol,
+OpenOCD supports running such test files.
+
+<blockquote>
+<b>Important:</b> Not all XSVF commands are supported. 
+</blockquote>
+
+<div class="defun">
+&mdash; Command: <b>xsvf</b> (<var>tapname|</var><samp><span class="option">plain</span></samp>)<var> filename </var>[<samp><span class="option">virt2</span></samp>] [<samp><span class="option">quiet</span></samp>]<var><a name="index-xsvf-522"></a></var><br>
+<blockquote><p>This issues a JTAG reset (Test-Logic-Reset) and then
+runs the XSVF script from <samp><span class="file">filename</span></samp>. 
+When a <var>tapname</var> is specified, the commands are directed at
+that TAP. 
+When <samp><span class="option">virt2</span></samp> is specified, the <span class="sc">xruntest</span> command counts
+are interpreted as TCK cycles instead of microseconds. 
+Unless the <samp><span class="option">quiet</span></samp> option is specified,
+messages are logged for comments and some retries. 
+</p></blockquote></div>
+
+<p>The OpenOCD sources also include two utility scripts
+for working with XSVF; they are not currently installed
+after building the software. 
+You may find them useful:
+
+     <ul>
+<li><em>svf2xsvf</em> ... converts SVF files into the extended XSVF
+syntax understood by the <samp><span class="command">xsvf</span></samp> command; see notes below. 
+<li><em>xsvfdump</em> ... converts XSVF files into a text output format;
+understands the OpenOCD extensions. 
+</ul>
+
+<p>The input format accepts a handful of non-standard extensions. 
+These include three opcodes corresponding to SVF extensions
+from Lattice Semiconductor (LCOUNT, LDELAY, LDSR), and
+two opcodes supporting a more accurate translation of SVF
+(XTRST, XWAITSTATE). 
+If <em>xsvfdump</em> shows a file is using those opcodes, it
+probably will not be usable with other XSVF tools.
+
+</body></html>
+

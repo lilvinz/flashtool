@@ -1,0 +1,145 @@
+<html lang="en">
+<head>
+<title>Tcl Scripting API - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="GDB-and-OpenOCD.html#GDB-and-OpenOCD" title="GDB and OpenOCD">
+<link rel="next" href="FAQ.html#FAQ" title="FAQ">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 25 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="Tcl-Scripting-API"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="FAQ.html#FAQ">FAQ</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="GDB-and-OpenOCD.html#GDB-and-OpenOCD">GDB and OpenOCD</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">22 Tcl Scripting API</h2>
+
+<p><a name="index-Tcl-Scripting-API-528"></a><a name="index-Tcl-scripts-529"></a>
+
+<h3 class="section">22.1 API rules</h3>
+
+<p>The commands are stateless. E.g. the telnet command line has a concept
+of currently active target, the Tcl API proc's take this sort of state
+information as an argument to each proc.
+
+<p>There are three main types of return values: single value, name value
+pair list and lists.
+
+<p>Name value pair. The proc 'foo' below returns a name/value pair
+list.
+
+<pre class="verbatim">
+ >  set foo(me)  Duane
+ >  set foo(you) Oyvind
+ >  set foo(mouse) Micky
+ >  set foo(duck) Donald
+
+If one does this:
+
+ >  set foo
+
+The result is:
+
+    me Duane you Oyvind mouse Micky duck Donald
+
+Thus, to get the names of the associative array is easy:
+
+     foreach  { name value }   [set foo]   {
+                puts "Name: $name, Value: $value"
+     }
+</pre>
+
+<p>Lists returned must be relatively small. Otherwise a range
+should be passed in to the proc in question.
+
+<h3 class="section">22.2 Internal low-level Commands</h3>
+
+<p>By low-level, the intent is a human would not directly use these commands.
+
+<p>Low-level commands are (should be) prefixed with "ocd_", e.g. 
+<samp><span class="command">ocd_flash_banks</span></samp>
+is the low level API upon which <samp><span class="command">flash banks</span></samp> is implemented.
+
+     <ul>
+<li><b>mem2array</b> &lt;<var>varname</var>&gt; &lt;<var>width</var>&gt; &lt;<var>addr</var>&gt; &lt;<var>nelems</var>&gt;
+
+     <p>Read memory and return as a Tcl array for script processing
+<li><b>array2mem</b> &lt;<var>varname</var>&gt; &lt;<var>width</var>&gt; &lt;<var>addr</var>&gt; &lt;<var>nelems</var>&gt;
+
+     <p>Convert a Tcl array to memory locations and write the values
+<li><b>ocd_flash_banks</b> &lt;<var>driver</var>&gt; &lt;<var>base</var>&gt; &lt;<var>size</var>&gt; &lt;<var>chip_width</var>&gt; &lt;<var>bus_width</var>&gt; &lt;<var>target</var>&gt; [<samp><span class="option">driver options</span></samp> ...]
+
+     <p>Return information about the flash banks
+</ul>
+
+<p>OpenOCD commands can consist of two words, e.g. "flash banks". The
+<samp><span class="file">startup.tcl</span></samp> "unknown" proc will translate this into a Tcl proc
+called "flash_banks".
+
+<h3 class="section">22.3 OpenOCD specific Global Variables</h3>
+
+<p>Real Tcl has ::tcl_platform(), and platform::identify, and many other
+variables. JimTCL, as implemented in OpenOCD creates $ocd_HOSTOS which
+holds one of the following values:
+
+     <ul>
+<li><b>cygwin</b>   Running under Cygwin
+<li><b>darwin</b>   Darwin (Mac-OS) is the underlying operating sytem. 
+<li><b>freebsd</b>  Running under FreeBSD
+<li><b>linux</b>    Linux is the underlying operating sytem
+<li><b>mingw32</b>  Running under MingW32
+<li><b>winxx</b>    Built using Microsoft Visual Studio
+<li><b>other</b>    Unknown, none of the above. 
+</ul>
+
+<p>Note: 'winxx' was choosen because today (March-2009) no distinction is made between Win32 and Win64.
+
+<blockquote>
+<b>Note:</b> We should add support for a variable like Tcl variable
+<code>tcl_platform(platform)</code>, it should be called
+<code>jim_platform</code> (because it
+is jim, not real tcl). 
+</blockquote>
+
+</body></html>
+

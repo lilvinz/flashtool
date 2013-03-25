@@ -1,0 +1,85 @@
+<html lang="en">
+<head>
+<title>Flash Programming - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Flash-Commands.html#Flash-Commands" title="Flash Commands">
+<link rel="next" href="NAND-Flash-Commands.html#NAND-Flash-Commands" title="NAND Flash Commands">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 25 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="Flash-Programming"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="NAND-Flash-Commands.html#NAND-Flash-Commands">NAND Flash Commands</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Flash-Commands.html#Flash-Commands">Flash Commands</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">13 Flash Programming</h2>
+
+<p>OpenOCD implements numerous ways to program the target flash, whether internal or external. 
+Programming can be acheived by either using GDB <a href="Programming-using-GDB.html#Programming-using-GDB">Programming using GDB</a>, or using the cmds given in <a href="Flash-Programming-Commands.html#Flash-Programming-Commands">Flash Programming Commands</a>.
+
+<p><br>To simplify using the flash cmds directly a jimtcl script is available that handles the programming and verify stage. 
+OpenOCD will program/verify/reset the target and shutdown.
+
+<p>The script is executed as follows and by default the following actions will be peformed.
+     <ol type=1 start=1>
+<li>'init' is executed. 
+<li>'reset init' is called to reset and halt the target, any 'reset init' scripts are executed. 
+<li><code>flash write_image</code> is called to erase and write any flash using the filename given. 
+<li><code>verify_image</code> is called if <samp><span class="option">verify</span></samp> parameter is given. 
+<li><code>reset run</code> is called if <samp><span class="option">reset</span></samp> parameter is given. 
+<li>OpenOCD is shutdown.
+     </ol>
+
+<p>An example of usage is given below. See <a href="program.html#program">program</a>.
+
+<pre class="example">     # program and verify using elf/hex/s19. verify and reset
+     # are optional parameters
+     openocd -f board/stm32f3discovery.cfg \
+     	-c "program filename.elf verify reset"
+     
+     # binary files need the flash address passing
+     openocd -f board/stm32f3discovery.cfg \
+     	-c "program filename.bin 0x08000000"
+</pre>
+</body></html>
+

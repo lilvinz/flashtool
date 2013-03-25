@@ -1,0 +1,116 @@
+<html lang="en">
+<head>
+<title>PLD/FPGA Commands - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="NAND-Flash-Commands.html#NAND-Flash-Commands" title="NAND Flash Commands">
+<link rel="next" href="General-Commands.html#General-Commands" title="General Commands">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 24 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="PLD%2fFPGA-Commands"></a>
+<a name="PLD_002fFPGA-Commands"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="General-Commands.html#General-Commands">General Commands</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="NAND-Flash-Commands.html#NAND-Flash-Commands">NAND Flash Commands</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">15 PLD/FPGA Commands</h2>
+
+<p><a name="index-PLD-341"></a><a name="index-FPGA-342"></a>
+Programmable Logic Devices (PLDs) and the more flexible
+Field Programmable Gate Arrays (FPGAs) are both types of programmable hardware. 
+OpenOCD can support programming them. 
+Although PLDs are generally restrictive (cells are less functional, and
+there are no special purpose cells for memory or computational tasks),
+they share the same OpenOCD infrastructure. 
+Accordingly, both are called PLDs here.
+
+<h3 class="section">15.1 PLD/FPGA Configuration and Commands</h3>
+
+<p>As it does for JTAG TAPs, debug targets, and flash chips (both NOR and NAND),
+OpenOCD maintains a list of PLDs available for use in various commands. 
+Also, each such PLD requires a driver.
+
+<p>They are referenced by the number shown by the <samp><span class="command">pld devices</span></samp> command,
+and new PLDs are defined by <samp><span class="command">pld device driver_name</span></samp>.
+
+<div class="defun">
+&mdash; Config Command: <b>pld device</b><var> driver_name tap_name </var>[<var>driver_options</var>]<var><a name="index-pld-device-343"></a></var><br>
+<blockquote><p>Defines a new PLD device, supported by driver <var>driver_name</var>,
+using the TAP named <var>tap_name</var>. 
+The driver may make use of any <var>driver_options</var> to configure its
+behavior. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>pld devices</b><var><a name="index-pld-devices-344"></a></var><br>
+<blockquote><p>Lists the PLDs and their numbers. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>pld load</b><var> num filename<a name="index-pld-load-345"></a></var><br>
+<blockquote><p>Loads the file <samp><span class="file">filename</span></samp> into the PLD identified by <var>num</var>. 
+The file format must be inferred by the driver. 
+</p></blockquote></div>
+
+<h3 class="section">15.2 PLD/FPGA Drivers, Options, and Commands</h3>
+
+<p>Drivers may support PLD-specific options to the <samp><span class="command">pld device</span></samp>
+definition command, and may also define commands usable only with
+that particular type of PLD.
+
+<div class="defun">
+&mdash; FPGA Driver: <b>virtex2</b><var><a name="index-virtex2-346"></a></var><br>
+<blockquote><p>Virtex-II is a family of FPGAs sold by Xilinx. 
+It supports the IEEE 1532 standard for In-System Configuration (ISC). 
+No driver-specific PLD definition options are used,
+and one driver-specific command is defined.
+
+     <div class="defun">
+&mdash; Command: <b>virtex2 read_stat</b><var> num<a name="index-virtex2-read_005fstat-347"></a></var><br>
+<blockquote><p>Reads and displays the Virtex-II status register (STAT)
+for FPGA <var>num</var>. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+</body></html>
+

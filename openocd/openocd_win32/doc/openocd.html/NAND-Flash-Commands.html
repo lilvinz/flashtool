@@ -1,0 +1,503 @@
+<html lang="en">
+<head>
+<title>NAND Flash Commands - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Flash-Programming.html#Flash-Programming" title="Flash Programming">
+<link rel="next" href="PLD_002fFPGA-Commands.html#PLD_002fFPGA-Commands" title="PLD/FPGA Commands">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 24 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="NAND-Flash-Commands"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="PLD_002fFPGA-Commands.html#PLD_002fFPGA-Commands">PLD/FPGA Commands</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Flash-Programming.html#Flash-Programming">Flash Programming</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">14 NAND Flash Commands</h2>
+
+<p><a name="index-NAND-304"></a>
+Compared to NOR or SPI flash, NAND devices are inexpensive
+and high density.  Today's NAND chips, and multi-chip modules,
+commonly hold multiple GigaBytes of data.
+
+<p>NAND chips consist of a number of &ldquo;erase blocks&rdquo; of a given
+size (such as 128 KBytes), each of which is divided into a
+number of pages (of perhaps 512 or 2048 bytes each).  Each
+page of a NAND flash has an &ldquo;out of band&rdquo; (OOB) area to hold
+Error Correcting Code (ECC) and other metadata, usually 16 bytes
+of OOB for every 512 bytes of page data.
+
+<p>One key characteristic of NAND flash is that its error rate
+is higher than that of NOR flash.  In normal operation, that
+ECC is used to correct and detect errors.  However, NAND
+blocks can also wear out and become unusable; those blocks
+are then marked "bad".  NAND chips are even shipped from the
+manufacturer with a few bad blocks.  The highest density chips
+use a technology (MLC) that wears out more quickly, so ECC
+support is increasingly important as a way to detect blocks
+that have begun to fail, and help to preserve data integrity
+with techniques such as wear leveling.
+
+<p>Software is used to manage the ECC.  Some controllers don't
+support ECC directly; in those cases, software ECC is used. 
+Other controllers speed up the ECC calculations with hardware. 
+Single-bit error correction hardware is routine.  Controllers
+geared for newer MLC chips may correct 4 or more errors for
+every 512 bytes of data.
+
+<p>You will need to make sure that any data you write using
+OpenOCD includes the apppropriate kind of ECC.  For example,
+that may mean passing the <code>oob_softecc</code> flag when
+writing NAND data, or ensuring that the correct hardware
+ECC mode is used.
+
+<p>The basic steps for using NAND devices include:
+     <ol type=1 start=1>
+<li>Declare via the command <samp><span class="command">nand device</span></samp>
+<br> Do this in a board-specific configuration file,
+passing parameters as needed by the controller. 
+<li>Configure each device using <samp><span class="command">nand probe</span></samp>. 
+<br> Do this only after the associated target is set up,
+such as in its reset-init script or in procures defined
+to access that device. 
+<li>Operate on the flash via <samp><span class="command">nand subcommand</span></samp>
+<br> Often commands to manipulate the flash are typed by a human, or run
+via a script in some automated way.  Common task include writing a
+boot loader, operating system, or other data needed to initialize or
+de-brick a board.
+     </ol>
+
+<p><b>NOTE:</b> At the time this text was written, the largest NAND
+flash fully supported by OpenOCD is 2 GiBytes (16 GiBits). 
+This is because the variables used to hold offsets and lengths
+are only 32 bits wide. 
+(Larger chips may work in some cases, unless an offset or length
+is larger than 0xffffffff, the largest 32-bit unsigned integer.) 
+Some larger devices will work, since they are actually multi-chip
+modules with two smaller chips and individual chipselect lines.
+
+<p><a name="NAND-Configuration"></a>
+
+<h3 class="section">14.1 NAND Configuration Commands</h3>
+
+<p><a name="index-NAND-configuration-305"></a>
+NAND chips must be declared in configuration scripts,
+plus some additional configuration that's done after
+OpenOCD has initialized.
+
+<div class="defun">
+&mdash; Config Command: <b>nand device</b><var> name driver target </var>[<var>configparams...</var>]<var><a name="index-nand-device-306"></a></var><br>
+<blockquote><p>Declares a NAND device, which can be read and written to
+after it has been configured through <samp><span class="command">nand probe</span></samp>. 
+In OpenOCD, devices are single chips; this is unlike some
+operating systems, which may manage multiple chips as if
+they were a single (larger) device. 
+In some cases, configuring a device will activate extra
+commands; see the controller-specific documentation.
+
+     <p><b>NOTE:</b> This command is not available after OpenOCD
+initialization has completed.  Use it in board specific
+configuration files, not interactively.
+
+          <ul>
+<li><var>name</var> ... may be used to reference the NAND bank
+in most other NAND commands.  A number is also available. 
+<li><var>driver</var> ... identifies the NAND controller driver
+associated with the NAND device being declared. 
+See <a href="NAND-Driver-List.html#NAND-Driver-List">NAND Driver List</a>. 
+<li><var>target</var> ... names the target used when issuing
+commands to the NAND controller. 
+<!-- Actually, it's currently a controller-specific parameter... -->
+<li><var>configparams</var> ... controllers may support, or require,
+additional parameters.  See the controller-specific documentation
+for more information. 
+</ul>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand list</b><var><a name="index-nand-list-307"></a></var><br>
+<blockquote><p>Prints a summary of each device declared
+using <samp><span class="command">nand device</span></samp>, numbered from zero. 
+Note that un-probed devices show no details.
+     <pre class="example">          &gt; nand list
+          #0: NAND 1GiB 3,3V 8-bit (Micron) pagesize: 2048, buswidth: 8,
+                  blocksize: 131072, blocks: 8192
+          #1: NAND 1GiB 3,3V 8-bit (Micron) pagesize: 2048, buswidth: 8,
+                  blocksize: 131072, blocks: 8192
+          &gt;
+</pre>
+     </blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand probe</b><var> num<a name="index-nand-probe-308"></a></var><br>
+<blockquote><p>Probes the specified device to determine key characteristics
+like its page and block sizes, and how many blocks it has. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>. 
+You must (successfully) probe a device before you can use
+it with most other NAND commands. 
+</p></blockquote></div>
+
+<h3 class="section">14.2 Erasing, Reading, Writing to NAND Flash</h3>
+
+<div class="defun">
+&mdash; Command: <b>nand dump</b><var> num filename offset length </var>[<var>oob_option</var>]<var><a name="index-nand-dump-309"></a></var><br>
+<blockquote><p><a name="index-NAND-reading-310"></a>Reads binary data from the NAND device and writes it to the file,
+starting at the specified offset. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>.
+
+     <p>Use a complete path name for <var>filename</var>, so you don't depend
+on the directory used to start the OpenOCD server.
+
+     <p>The <var>offset</var> and <var>length</var> must be exact multiples of the
+device's page size.  They describe a data region; the OOB data
+associated with each such page may also be accessed.
+
+     <p><b>NOTE:</b> At the time this text was written, no error correction
+was done on the data that's read, unless raw access was disabled
+and the underlying NAND controller driver had a <code>read_page</code>
+method which handled that error correction.
+
+     <p>By default, only page data is saved to the specified file. 
+Use an <var>oob_option</var> parameter to save OOB data:
+          <ul>
+<li>no oob_* parameter
+<br>Output file holds only page data; OOB is discarded. 
+<li><code>oob_raw</code>
+<br>Output file interleaves page data and OOB data;
+the file will be longer than "length" by the size of the
+spare areas associated with each data page. 
+Note that this kind of "raw" access is different from
+what's implied by <samp><span class="command">nand raw_access</span></samp>, which just
+controls whether a hardware-aware access method is used. 
+<li><code>oob_only</code>
+<br>Output file has only raw OOB data, and will
+be smaller than "length" since it will contain only the
+spare areas associated with each data page. 
+</ul>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand erase</b><var> num </var>[<var>offset length</var>]<var><a name="index-nand-erase-311"></a></var><br>
+<blockquote><p><a name="index-NAND-erasing-312"></a><a name="index-NAND-programming-313"></a>Erases blocks on the specified NAND device, starting at the
+specified <var>offset</var> and continuing for <var>length</var> bytes. 
+Both of those values must be exact multiples of the device's
+block size, and the region they specify must fit entirely in the chip. 
+If those parameters are not specified,
+the whole NAND chip will be erased. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>.
+
+     <p><b>NOTE:</b> This command will try to erase bad blocks, when told
+to do so, which will probably invalidate the manufacturer's bad
+block marker. 
+For the remainder of the current server session, <samp><span class="command">nand info</span></samp>
+will still report that the block &ldquo;is&rdquo; bad. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand write</b><var> num filename offset </var>[<var>option...</var>]<var><a name="index-nand-write-314"></a></var><br>
+<blockquote><p><a name="index-NAND-writing-315"></a><a name="index-NAND-programming-316"></a>Writes binary data from the file into the specified NAND device,
+starting at the specified offset.  Those pages should already
+have been erased; you can't change zero bits to one bits. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>.
+
+     <p>Use a complete path name for <var>filename</var>, so you don't depend
+on the directory used to start the OpenOCD server.
+
+     <p>The <var>offset</var> must be an exact multiple of the device's page size. 
+All data in the file will be written, assuming it doesn't run
+past the end of the device. 
+Only full pages are written, and any extra space in the last
+page will be filled with 0xff bytes.  (That includes OOB data,
+if that's being written.)
+
+     <p><b>NOTE:</b> At the time this text was written, bad blocks are
+ignored.  That is, this routine will not skip bad blocks,
+but will instead try to write them.  This can cause problems.
+
+     <p>Provide at most one <var>option</var> parameter.  With some
+NAND drivers, the meanings of these parameters may change
+if <samp><span class="command">nand raw_access</span></samp> was used to disable hardware ECC.
+          <ul>
+<li>no oob_* parameter
+<br>File has only page data, which is written. 
+If raw acccess is in use, the OOB area will not be written. 
+Otherwise, if the underlying NAND controller driver has
+a <code>write_page</code> routine, that routine may write the OOB
+with hardware-computed ECC data. 
+<li><code>oob_only</code>
+<br>File has only raw OOB data, which is written to the OOB area. 
+Each page's data area stays untouched.  <i>This can be a dangerous
+option</i>, since it can invalidate the ECC data. 
+You may need to force raw access to use this mode. 
+<li><code>oob_raw</code>
+<br>File interleaves data and OOB data, both of which are written
+If raw access is enabled, the data is written first, then the
+un-altered OOB. 
+Otherwise, if the underlying NAND controller driver has
+a <code>write_page</code> routine, that routine may modify the OOB
+before it's written, to include hardware-computed ECC data. 
+<li><code>oob_softecc</code>
+<br>File has only page data, which is written. 
+The OOB area is filled with 0xff, except for a standard 1-bit
+software ECC code stored in conventional locations. 
+You might need to force raw access to use this mode, to prevent
+the underlying driver from applying hardware ECC. 
+<li><code>oob_softecc_kw</code>
+<br>File has only page data, which is written. 
+The OOB area is filled with 0xff, except for a 4-bit software ECC
+specific to the boot ROM in Marvell Kirkwood SoCs. 
+You might need to force raw access to use this mode, to prevent
+the underlying driver from applying hardware ECC. 
+</ul>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand verify</b><var> num filename offset </var>[<var>option...</var>]<var><a name="index-nand-verify-317"></a></var><br>
+<blockquote><p><a name="index-NAND-verification-318"></a><a name="index-NAND-programming-319"></a>Verify the binary data in the file has been programmed to the
+specified NAND device, starting at the specified offset. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>.
+
+     <p>Use a complete path name for <var>filename</var>, so you don't depend
+on the directory used to start the OpenOCD server.
+
+     <p>The <var>offset</var> must be an exact multiple of the device's page size. 
+All data in the file will be read and compared to the contents of the
+flash, assuming it doesn't run past the end of the device. 
+As with <samp><span class="command">nand write</span></samp>, only full pages are verified, so any extra
+space in the last page will be filled with 0xff bytes.
+
+     <p>The same <var>options</var> accepted by <samp><span class="command">nand write</span></samp>,
+and the file will be processed similarly to produce the buffers that
+can be compared against the contents produced from <samp><span class="command">nand dump</span></samp>.
+
+     <p><b>NOTE:</b> This will not work when the underlying NAND controller
+driver's <code>write_page</code> routine must update the OOB with a
+hardward-computed ECC before the data is written.  This limitation may
+be removed in a future release. 
+</p></blockquote></div>
+
+<h3 class="section">14.3 Other NAND commands</h3>
+
+<p><a name="index-NAND-other-commands-320"></a>
+
+<div class="defun">
+&mdash; Command: <b>nand check_bad_blocks</b><var> num </var>[<var>offset length</var>]<var><a name="index-nand-check_005fbad_005fblocks-321"></a></var><br>
+<blockquote><p>Checks for manufacturer bad block markers on the specified NAND
+device.  If no parameters are provided, checks the whole
+device; otherwise, starts at the specified <var>offset</var> and
+continues for <var>length</var> bytes. 
+Both of those values must be exact multiples of the device's
+block size, and the region they specify must fit entirely in the chip. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>.
+
+     <p><b>NOTE:</b> Before using this command you should force raw access
+with <samp><span class="command">nand raw_access enable</span></samp> to ensure that the underlying
+driver will not try to apply hardware ECC. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand info</b><var> num<a name="index-nand-info-322"></a></var><br>
+<blockquote><p>The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>. 
+This prints the one-line summary from "nand list", plus for
+devices which have been probed this also prints any known
+status for each block. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>nand raw_access</b><var> num </var>(<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>)<var><a name="index-nand-raw_005faccess-323"></a></var><br>
+<blockquote><p>Sets or clears an flag affecting how page I/O is done. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>.
+
+     <p>This flag is cleared (disabled) by default, but changing that
+value won't affect all NAND devices.  The key factor is whether
+the underlying driver provides <code>read_page</code> or <code>write_page</code>
+methods.  If it doesn't provide those methods, the setting of
+this flag is irrelevant; all access is effectively &ldquo;raw&rdquo;.
+
+     <p>When those methods exist, they are normally used when reading
+data (<samp><span class="command">nand dump</span></samp> or reading bad block markers) or
+writing it (<samp><span class="command">nand write</span></samp>).  However, enabling
+raw access (setting the flag) prevents use of those methods,
+bypassing hardware ECC logic. 
+<i>This can be a dangerous option</i>, since writing blocks
+with the wrong ECC data can cause them to be marked as bad. 
+</p></blockquote></div>
+
+<p><a name="NAND-Driver-List"></a>
+
+<h3 class="section">14.4 NAND Driver List</h3>
+
+<p>As noted above, the <samp><span class="command">nand device</span></samp> command allows
+driver-specific options and behaviors. 
+Some controllers also activate controller-specific commands.
+
+<div class="defun">
+&mdash; NAND Driver: <b>at91sam9</b><var><a name="index-at91sam9-324"></a></var><br>
+<blockquote><p>This driver handles the NAND controllers found on AT91SAM9 family chips from
+Atmel.  It takes two extra parameters: address of the NAND chip;
+address of the ECC controller.
+     <pre class="example">          nand device $NANDFLASH at91sam9 $CHIPNAME 0x40000000 0xfffffe800
+</pre>
+     <p>AT91SAM9 chips support single-bit ECC hardware. The <code>write_page</code> and
+<code>read_page</code> methods are used to utilize the ECC hardware unless they are
+disabled by using the <samp><span class="command">nand raw_access</span></samp> command.  There are four
+additional commands that are needed to fully configure the AT91SAM9 NAND
+controller.  Two are optional; most boards use the same wiring for ALE/CLE:
+
+     <div class="defun">
+&mdash; Command: <b>at91sam9 cle</b><var> num addr_line<a name="index-at91sam9-cle-325"></a></var><br>
+<blockquote><p>Configure the address line used for latching commands.  The <var>num</var>
+parameter is the value shown by <samp><span class="command">nand list</span></samp>. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>at91sam9 ale</b><var> num addr_line<a name="index-at91sam9-ale-326"></a></var><br>
+<blockquote><p>Configure the address line used for latching addresses.  The <var>num</var>
+parameter is the value shown by <samp><span class="command">nand list</span></samp>. 
+</p></blockquote></div>
+
+     <p>For the next two commands, it is assumed that the pins have already been
+properly configured for input or output.
+
+     <div class="defun">
+&mdash; Command: <b>at91sam9 rdy_busy</b><var> num pio_base_addr pin<a name="index-at91sam9-rdy_005fbusy-327"></a></var><br>
+<blockquote><p>Configure the RDY/nBUSY input from the NAND device.  The <var>num</var>
+parameter is the value shown by <samp><span class="command">nand list</span></samp>.  <var>pio_base_addr</var>
+is the base address of the PIO controller and <var>pin</var> is the pin number. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>at91sam9 ce</b><var> num pio_base_addr pin<a name="index-at91sam9-ce-328"></a></var><br>
+<blockquote><p>Configure the chip enable input to the NAND device.  The <var>num</var>
+parameter is the value shown by <samp><span class="command">nand list</span></samp>.  <var>pio_base_addr</var>
+is the base address of the PIO controller and <var>pin</var> is the pin number. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; NAND Driver: <b>davinci</b><var><a name="index-davinci-329"></a></var><br>
+<blockquote><p>This driver handles the NAND controllers found on DaVinci family
+chips from Texas Instruments. 
+It takes three extra parameters:
+address of the NAND chip;
+hardware ECC mode to use (<samp><span class="option">hwecc1</span></samp>,
+<samp><span class="option">hwecc4</span></samp>, <samp><span class="option">hwecc4_infix</span></samp>);
+address of the AEMIF controller on this processor.
+     <pre class="example">          nand device davinci dm355.arm 0x02000000 hwecc4 0x01e10000
+</pre>
+     <p>All DaVinci processors support the single-bit ECC hardware,
+and newer ones also support the four-bit ECC hardware. 
+The <code>write_page</code> and <code>read_page</code> methods are used
+to implement those ECC modes, unless they are disabled using
+the <samp><span class="command">nand raw_access</span></samp> command. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; NAND Driver: <b>lpc3180</b><var><a name="index-lpc3180-330"></a></var><br>
+<blockquote><p>These controllers require an extra <samp><span class="command">nand device</span></samp>
+parameter:  the clock rate used by the controller.
+
+     <div class="defun">
+&mdash; Command: <b>lpc3180 select</b><var> num </var>[<var>mlc|slc</var>]<var><a name="index-lpc3180-select-331"></a></var><br>
+<blockquote><p>Configures use of the MLC or SLC controller mode. 
+MLC implies use of hardware ECC. 
+The <var>num</var> parameter is the value shown by <samp><span class="command">nand list</span></samp>. 
+</p></blockquote></div>
+
+     <p>At this writing, this driver includes <code>write_page</code>
+and <code>read_page</code> methods.  Using <samp><span class="command">nand raw_access</span></samp>
+to disable those methods will prevent use of hardware ECC
+in the MLC controller mode, but won't change SLC behavior. 
+</p></blockquote></div>
+<!-- current lpc3180 code won't issue 5-byte address cycles -->
+
+<div class="defun">
+&mdash; NAND Driver: <b>mx3</b><var><a name="index-mx3-332"></a></var><br>
+<blockquote><p>This driver handles the NAND controller in i.MX31. The mxc driver
+should work for this chip aswell. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; NAND Driver: <b>mxc</b><var><a name="index-mxc-333"></a></var><br>
+<blockquote><p>This driver handles the NAND controller found in Freescale i.MX
+chips. It has support for v1 (i.MX27 and i.MX31) and v2 (i.MX35). 
+The driver takes 3 extra arguments, chip (<samp><span class="option">mx27</span></samp>,
+<samp><span class="option">mx31</span></samp>, <samp><span class="option">mx35</span></samp>), ecc (<samp><span class="option">noecc</span></samp>, <samp><span class="option">hwecc</span></samp>)
+and optionally if bad block information should be swapped between
+main area and spare area (<samp><span class="option">biswap</span></samp>), defaults to off.
+     <pre class="example">          nand device mx35.nand mxc imx35.cpu mx35 hwecc biswap
+</pre>
+     <div class="defun">
+&mdash; Command: <b>mxc biswap</b><var> bank_num </var>[<var>enable|disable</var>]<var><a name="index-mxc-biswap-334"></a></var><br>
+<blockquote><p>Turns on/off bad block information swaping from main area,
+without parameter query status. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; NAND Driver: <b>orion</b><var><a name="index-orion-335"></a></var><br>
+<blockquote><p>These controllers require an extra <samp><span class="command">nand device</span></samp>
+parameter:  the address of the controller.
+     <pre class="example">          nand device orion 0xd8000000
+</pre>
+     <p>These controllers don't define any specialized commands. 
+At this writing, their drivers don't include <code>write_page</code>
+or <code>read_page</code> methods, so <samp><span class="command">nand raw_access</span></samp> won't
+change any behavior. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; NAND Driver: <b>s3c2410</b><var><a name="index-s3c2410-336"></a></var><br>
+&mdash; NAND Driver: <b>s3c2412</b><var><a name="index-s3c2412-337"></a></var><br>
+&mdash; NAND Driver: <b>s3c2440</b><var><a name="index-s3c2440-338"></a></var><br>
+&mdash; NAND Driver: <b>s3c2443</b><var><a name="index-s3c2443-339"></a></var><br>
+&mdash; NAND Driver: <b>s3c6400</b><var><a name="index-s3c6400-340"></a></var><br>
+<blockquote><p>These S3C family controllers don't have any special
+<samp><span class="command">nand device</span></samp> options, and don't define any
+specialized commands. 
+At this writing, their drivers don't include <code>write_page</code>
+or <code>read_page</code> methods, so <samp><span class="command">nand raw_access</span></samp> won't
+change any behavior. 
+</p></blockquote></div>
+
+</body></html>
+

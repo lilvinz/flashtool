@@ -1,0 +1,1029 @@
+<html lang="en">
+<head>
+<title>Architecture and Core Commands - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="General-Commands.html#General-Commands" title="General Commands">
+<link rel="next" href="JTAG-Commands.html#JTAG-Commands" title="JTAG Commands">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 24 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="Architecture-and-Core-Commands"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="JTAG-Commands.html#JTAG-Commands">JTAG Commands</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="General-Commands.html#General-Commands">General Commands</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">17 Architecture and Core Commands</h2>
+
+<p><a name="index-Architecture-Specific-Commands-407"></a><a name="index-Core-Specific-Commands-408"></a>
+Most CPUs have specialized JTAG operations to support debugging. 
+OpenOCD packages most such operations in its standard command framework. 
+Some of those operations don't fit well in that framework, so they are
+exposed here as architecture or implementation (core) specific commands.
+
+<p><a name="ARM-Hardware-Tracing"></a>
+
+<h3 class="section">17.1 ARM Hardware Tracing</h3>
+
+<p><a name="index-tracing-409"></a><a name="index-ETM-410"></a><a name="index-ETB-411"></a>
+CPUs based on ARM cores may include standard tracing interfaces,
+based on an &ldquo;Embedded Trace Module&rdquo; (ETM) which sends voluminous
+address and data bus trace records to a &ldquo;Trace Port&rdquo;.
+
+     <ul>
+<li>Development-oriented boards will sometimes provide a high speed
+trace connector for collecting that data, when the particular CPU
+supports such an interface. 
+(The standard connector is a 38-pin Mictor, with both JTAG
+and trace port support.) 
+Those trace connectors are supported by higher end JTAG adapters
+and some logic analyzer modules; frequently those modules can
+buffer several megabytes of trace data. 
+Configuring an ETM coupled to such an external trace port belongs
+in the board-specific configuration file. 
+<li>If the CPU doesn't provide an external interface, it probably
+has an &ldquo;Embedded Trace Buffer&rdquo; (ETB) on the chip, which is a
+dedicated SRAM.  4KBytes is one common ETB size. 
+Configuring an ETM coupled only to an ETB belongs in the CPU-specific
+(target) configuration file, since it works the same on all boards. 
+</ul>
+
+<p>ETM support in OpenOCD doesn't seem to be widely used yet.
+
+<blockquote>
+<b>Issues:</b> ETM support may be buggy, and at least some <samp><span class="command">etm config</span></samp>
+parameters should be detected by asking the ETM for them.
+
+<p>ETM trigger events could also implement a kind of complex
+hardware breakpoint, much more powerful than the simple
+watchpoint hardware exported by EmbeddedICE modules. 
+<em>Such breakpoints can be triggered even when using the
+dummy trace port driver</em>.
+
+<p>It seems like a GDB hookup should be possible,
+as well as tracing only during specific states
+(perhaps <em>handling IRQ 23</em> or <em>calls foo()</em>).
+
+<p>There should be GUI tools to manipulate saved trace data and help
+analyse it in conjunction with the source code. 
+It's unclear how much of a common interface is shared
+with the current XScale trace support, or should be
+shared with eventual Nexus-style trace module support.
+
+<p>At this writing (November 2009) only ARM7, ARM9, and ARM11 support
+for ETM modules is available.  The code should be able to
+work with some newer cores; but not all of them support
+this original style of JTAG access. 
+</blockquote>
+
+<h4 class="subsection">17.1.1 ETM Configuration</h4>
+
+<p>ETM setup is coupled with the trace port driver configuration.
+
+<div class="defun">
+&mdash; Config Command: <b>etm config</b><var> target width mode clocking driver<a name="index-etm-config-412"></a></var><br>
+<blockquote><p>Declares the ETM associated with <var>target</var>, and associates it
+with a given trace port <var>driver</var>.  See <a href="Trace-Port-Drivers.html#Trace-Port-Drivers">Trace Port Drivers</a>.
+
+     <p>Several of the parameters must reflect the trace port capabilities,
+which are a function of silicon capabilties (exposed later
+using <samp><span class="command">etm info</span></samp>) and of what hardware is connected to
+that port (such as an external pod, or ETB). 
+The <var>width</var> must be either 4, 8, or 16,
+except with ETMv3.0 and newer modules which may also
+support 1, 2, 24, 32, 48, and 64 bit widths. 
+(With those versions, <samp><span class="command">etm info</span></samp> also shows whether
+the selected port width and mode are supported.)
+
+     <p>The <var>mode</var> must be <samp><span class="option">normal</span></samp>, <samp><span class="option">multiplexed</span></samp>,
+or <samp><span class="option">demultiplexed</span></samp>. 
+The <var>clocking</var> must be <samp><span class="option">half</span></samp> or <samp><span class="option">full</span></samp>.
+
+     <blockquote>
+<b>Warning:</b> With ETMv3.0 and newer, the bits set with the <var>mode</var> and
+<var>clocking</var> parameters both control the mode. 
+This modified mode does not map to the values supported by
+previous ETM modules, so this syntax is subject to change. 
+</blockquote>
+
+     <blockquote>
+<b>Note:</b> You can see the ETM registers using the <samp><span class="command">reg</span></samp> command. 
+Not all possible registers are present in every ETM. 
+Most of the registers are write-only, and are used to configure
+what CPU activities are traced. 
+</blockquote>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm info</b><var><a name="index-etm-info-413"></a></var><br>
+<blockquote><p>Displays information about the current target's ETM. 
+This includes resource counts from the <code>ETM_CONFIG</code> register,
+as well as silicon capabilities (except on rather old modules). 
+from the <code>ETM_SYS_CONFIG</code> register. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm status</b><var><a name="index-etm-status-414"></a></var><br>
+<blockquote><p>Displays status of the current target's ETM and trace port driver:
+is the ETM idle, or is it collecting data? 
+Did trace data overflow? 
+Was it triggered? 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm tracemode</b> [<var>type context_id_bits cycle_accurate branch_output</var>]<var><a name="index-etm-tracemode-415"></a></var><br>
+<blockquote><p>Displays what data that ETM will collect. 
+If arguments are provided, first configures that data. 
+When the configuration changes, tracing is stopped
+and any buffered trace data is invalidated.
+
+          <ul>
+<li><var>type</var> ... describing how data accesses are traced,
+when they pass any ViewData filtering that that was set up. 
+The value is one of
+<samp><span class="option">none</span></samp> (save nothing),
+<samp><span class="option">data</span></samp> (save data),
+<samp><span class="option">address</span></samp> (save addresses),
+<samp><span class="option">all</span></samp> (save data and addresses)
+<li><var>context_id_bits</var> ... 0, 8, 16, or 32
+<li><var>cycle_accurate</var> ...  <samp><span class="option">enable</span></samp> or <samp><span class="option">disable</span></samp>
+cycle-accurate instruction tracing. 
+Before ETMv3, enabling this causes much extra data to be recorded. 
+<li><var>branch_output</var> ...  <samp><span class="option">enable</span></samp> or <samp><span class="option">disable</span></samp>. 
+Disable this unless you need to try reconstructing the instruction
+trace stream without an image of the code. 
+</ul>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm trigger_debug</b> (<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>)<var><a name="index-etm-trigger_005fdebug-416"></a></var><br>
+<blockquote><p>Displays whether ETM triggering debug entry (like a breakpoint) is
+enabled or disabled, after optionally modifying that configuration. 
+The default behaviour is <samp><span class="option">disable</span></samp>. 
+Any change takes effect after the next <samp><span class="command">etm start</span></samp>.
+
+     <p>By using script commands to configure ETM registers, you can make the
+processor enter debug state automatically when certain conditions,
+more complex than supported by the breakpoint hardware, happen. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.1.2 ETM Trace Operation</h4>
+
+<p>After setting up the ETM, you can use it to collect data. 
+That data can be exported to files for later analysis. 
+It can also be parsed with OpenOCD, for basic sanity checking.
+
+<p>To configure what is being traced, you will need to write
+various trace registers using <samp><span class="command">reg ETM_*</span></samp> commands. 
+For the definitions of these registers, read ARM publication
+<em>IHI 0014, &ldquo;Embedded Trace Macrocell, Architecture Specification&rdquo;</em>. 
+Be aware that most of the relevant registers are write-only,
+and that ETM resources are limited.  There are only a handful
+of address comparators, data comparators, counters, and so on.
+
+<p>Examples of scenarios you might arrange to trace include:
+
+     <ul>
+<li>Code flow within a function, <em>excluding</em> subroutines
+it calls.  Use address range comparators to enable tracing
+for instruction access within that function's body. 
+<li>Code flow within a function, <em>including</em> subroutines
+it calls.  Use the sequencer and address comparators to activate
+tracing on an &ldquo;entered function&rdquo; state, then deactivate it by
+exiting that state when the function's exit code is invoked. 
+<li>Code flow starting at the fifth invocation of a function,
+combining one of the above models with a counter. 
+<li>CPU data accesses to the registers for a particular device,
+using address range comparators and the ViewData logic. 
+<li>Such data accesses only during IRQ handling, combining the above
+model with sequencer triggers which on entry and exit to the IRQ handler. 
+<li><em>... more</em>
+</ul>
+
+<p>At this writing, September 2009, there are no Tcl utility
+procedures to help set up any common tracing scenarios.
+
+<div class="defun">
+&mdash; Command: <b>etm analyze</b><var><a name="index-etm-analyze-417"></a></var><br>
+<blockquote><p>Reads trace data into memory, if it wasn't already present. 
+Decodes and prints the data that was collected. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm dump</b><var> filename<a name="index-etm-dump-418"></a></var><br>
+<blockquote><p>Stores the captured trace data in <samp><span class="file">filename</span></samp>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm image</b><var> filename </var>[<var>base_address</var>] [<var>type</var>]<var><a name="index-etm-image-419"></a></var><br>
+<blockquote><p>Opens an image file. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm load</b><var> filename<a name="index-etm-load-420"></a></var><br>
+<blockquote><p>Loads captured trace data from <samp><span class="file">filename</span></samp>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm start</b><var><a name="index-etm-start-421"></a></var><br>
+<blockquote><p>Starts trace data collection. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>etm stop</b><var><a name="index-etm-stop-422"></a></var><br>
+<blockquote><p>Stops trace data collection. 
+</p></blockquote></div>
+
+<p><a name="Trace-Port-Drivers"></a>
+
+<h4 class="subsection">17.1.3 Trace Port Drivers</h4>
+
+<p>To use an ETM trace port it must be associated with a driver.
+
+<div class="defun">
+&mdash; Trace Port Driver: <b>dummy</b><var><a name="index-dummy-423"></a></var><br>
+<blockquote><p>Use the <samp><span class="option">dummy</span></samp> driver if you are configuring an ETM that's
+not connected to anything (on-chip ETB or off-chip trace connector). 
+<em>This driver lets OpenOCD talk to the ETM, but it does not expose
+any trace data collection.</em>
+
+     <div class="defun">
+&mdash; Config Command: <b>etm_dummy config</b><var> target<a name="index-etm_005fdummy-config-424"></a></var><br>
+<blockquote><p>Associates the ETM for <var>target</var> with a dummy driver. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Trace Port Driver: <b>etb</b><var><a name="index-etb-425"></a></var><br>
+<blockquote><p>Use the <samp><span class="option">etb</span></samp> driver if you are configuring an ETM
+to use on-chip ETB memory.
+
+     <div class="defun">
+&mdash; Config Command: <b>etb config</b><var> target etb_tap<a name="index-etb-config-426"></a></var><br>
+<blockquote><p>Associates the ETM for <var>target</var> with the ETB at <var>etb_tap</var>. 
+You can see the ETB registers using the <samp><span class="command">reg</span></samp> command. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>etb trigger_percent</b> [<var>percent</var>]<var><a name="index-etb-trigger_005fpercent-427"></a></var><br>
+<blockquote><p>This displays, or optionally changes, ETB behavior after the
+ETM's configured <em>trigger</em> event fires. 
+It controls how much more trace data is saved after the (single)
+trace trigger becomes active.
+
+               <ul>
+<li>The default corresponds to <em>trace around</em> usage,
+recording 50 percent data before the event and the rest
+afterwards. 
+<li>The minimum value of <var>percent</var> is 2 percent,
+recording almost exclusively data before the trigger. 
+Such extreme <em>trace before</em> usage can help figure out
+what caused that event to happen. 
+<li>The maximum value of <var>percent</var> is 100 percent,
+recording data almost exclusively after the event. 
+This extreme <em>trace after</em> usage might help sort out
+how the event caused trouble. 
+</ul>
+          <!-- REVISIT allow "break" too - enter debug mode. -->
+</p></blockquote></div>
+
+     </blockquote></div>
+
+<div class="defun">
+&mdash; Trace Port Driver: <b>oocd_trace</b><var><a name="index-oocd_005ftrace-428"></a></var><br>
+<blockquote><p>This driver isn't available unless OpenOCD was explicitly configured
+with the <samp><span class="option">--enable-oocd_trace</span></samp> option.  You probably don't want
+to configure it unless you've built the appropriate prototype hardware;
+it's <em>proof-of-concept</em> software.
+
+     <p>Use the <samp><span class="option">oocd_trace</span></samp> driver if you are configuring an ETM that's
+connected to an off-chip trace connector.
+
+     <div class="defun">
+&mdash; Config Command: <b>oocd_trace config</b><var> target tty<a name="index-oocd_005ftrace-config-429"></a></var><br>
+<blockquote><p>Associates the ETM for <var>target</var> with a trace driver which
+collects data through the serial port <var>tty</var>. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>oocd_trace resync</b><var><a name="index-oocd_005ftrace-resync-430"></a></var><br>
+<blockquote><p>Re-synchronizes with the capture clock. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>oocd_trace status</b><var><a name="index-oocd_005ftrace-status-431"></a></var><br>
+<blockquote><p>Reports whether the capture clock is locked or not. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<h3 class="section">17.2 Generic ARM</h3>
+
+<p><a name="index-ARM-432"></a>
+These commands should be available on all ARM processors. 
+They are available in addition to other core-specific
+commands that may be available.
+
+<div class="defun">
+&mdash; Command: <b>arm core_state</b> [<samp><span class="option">arm</span></samp><var>|</var><samp><span class="option">thumb</span></samp>]<var><a name="index-arm-core_005fstate-433"></a></var><br>
+<blockquote><p>Displays the core_state, optionally changing it to process
+either <samp><span class="option">arm</span></samp> or <samp><span class="option">thumb</span></samp> instructions. 
+The target may later be resumed in the currently set core_state. 
+(Processors may also support the Jazelle state, but
+that is not currently supported in OpenOCD.) 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm disassemble</b><var> address </var>[<var>count </var>[<samp><span class="option">thumb</span></samp>]]<var><a name="index-arm-disassemble-434"></a></var><br>
+<blockquote><p><a name="index-disassemble-435"></a>Disassembles <var>count</var> instructions starting at <var>address</var>. 
+If <var>count</var> is not specified, a single instruction is disassembled. 
+If <samp><span class="option">thumb</span></samp> is specified, or the low bit of the address is set,
+Thumb2 (mixed 16/32-bit) instructions are used;
+else ARM (32-bit) instructions are used. 
+(Processors may also support the Jazelle state, but
+those instructions are not currently understood by OpenOCD.)
+
+     <p>Note that all Thumb instructions are Thumb2 instructions,
+so older processors (without Thumb2 support) will still
+see correct disassembly of Thumb code. 
+Also, ThumbEE opcodes are the same as Thumb2,
+with a handful of exceptions. 
+ThumbEE disassembly currently has no explicit support. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm mcr</b><var> pX op1 CRn CRm op2 value<a name="index-arm-mcr-436"></a></var><br>
+<blockquote><p>Write <var>value</var> to a coprocessor <var>pX</var> register
+passing parameters <var>CRn</var>,
+<var>CRm</var>, opcodes <var>opc1</var> and <var>opc2</var>,
+and using the MCR instruction. 
+(Parameter sequence matches the ARM instruction, but omits
+an ARM register.) 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm mrc</b><var> pX coproc op1 CRn CRm op2<a name="index-arm-mrc-437"></a></var><br>
+<blockquote><p>Read a coprocessor <var>pX</var> register passing parameters <var>CRn</var>,
+<var>CRm</var>, opcodes <var>opc1</var> and <var>opc2</var>,
+and the MRC instruction. 
+Returns the result so it can be manipulated by Jim scripts. 
+(Parameter sequence matches the ARM instruction, but omits
+an ARM register.) 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm reg</b><var><a name="index-arm-reg-438"></a></var><br>
+<blockquote><p>Display a table of all banked core registers, fetching the current value from every
+core mode if necessary. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm semihosting</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm-semihosting-439"></a></var><br>
+<blockquote><p><a name="index-ARM-semihosting-440"></a>Display status of semihosting, after optionally changing that status.
+
+     <p>Semihosting allows for code executing on an ARM target to use the
+I/O facilities on the host computer i.e. the system where OpenOCD
+is running. The target application must be linked against a library
+implementing the ARM semihosting convention that forwards operation
+requests by using a special SVC instruction that is trapped at the
+Supervisor Call vector by OpenOCD. 
+</p></blockquote></div>
+
+<h3 class="section">17.3 ARMv4 and ARMv5 Architecture</h3>
+
+<p><a name="index-ARMv4-441"></a><a name="index-ARMv5-442"></a>
+The ARMv4 and ARMv5 architectures are widely used in embedded systems,
+and introduced core parts of the instruction set in use today. 
+That includes the Thumb instruction set, introduced in the ARMv4T
+variant.
+
+<h4 class="subsection">17.3.1 ARM7 and ARM9 specific commands</h4>
+
+<p><a name="index-ARM7-443"></a><a name="index-ARM9-444"></a>
+These commands are specific to ARM7 and ARM9 cores, like ARM7TDMI, ARM720T,
+ARM9TDMI, ARM920T or ARM926EJ-S. 
+They are available in addition to the ARM commands,
+and any other core-specific commands that may be available.
+
+<div class="defun">
+&mdash; Command: <b>arm7_9 dbgrq</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm7_005f9-dbgrq-445"></a></var><br>
+<blockquote><p>Displays the value of the flag controlling use of the
+the EmbeddedIce DBGRQ signal to force entry into debug mode,
+instead of breakpoints. 
+If a boolean parameter is provided, first assigns that flag.
+
+     <p>This should be
+safe for all but ARM7TDMI-S cores (like NXP LPC). 
+This feature is enabled by default on most ARM9 cores,
+including ARM9TDMI, ARM920T, and ARM926EJ-S. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm7_9 dcc_downloads</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm7_005f9-dcc_005fdownloads-446"></a></var><br>
+<blockquote><p><a name="index-DCC-447"></a>Displays the value of the flag controlling use of the debug communications
+channel (DCC) to write larger (&gt;128 byte) amounts of memory. 
+If a boolean parameter is provided, first assigns that flag.
+
+     <p>DCC downloads offer a huge speed increase, but might be
+unsafe, especially with targets running at very low speeds. This command was introduced
+with OpenOCD rev. 60, and requires a few bytes of working area. 
+</p></blockquote></div>
+
+<p><a name="arm7_005f9-fast_005fmemory_005faccess"></a>
+
+<div class="defun">
+&mdash; Command: <b>arm7_9 fast_memory_access</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm7_005f9-fast_005fmemory_005faccess-448"></a></var><br>
+<blockquote><p>Displays the value of the flag controlling use of memory writes and reads
+that don't check completion of the operation. 
+If a boolean parameter is provided, first assigns that flag.
+
+     <p>This provides a huge speed increase, especially with USB JTAG
+cables (FT2232), but might be unsafe if used with targets running at very low
+speeds, like the 32kHz startup clock of an AT91RM9200. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.3.2 ARM720T specific commands</h4>
+
+<p><a name="index-ARM720T-449"></a>
+These commands are available to ARM720T based CPUs,
+which are implementations of the ARMv4T architecture
+based on the ARM7TDMI-S integer core. 
+They are available in addition to the ARM and ARM7/ARM9 commands.
+
+<div class="defun">
+&mdash; Command: <b>arm720t cp15</b><var> opcode </var>[<var>value</var>]<var><a name="index-arm720t-cp15-450"></a></var><br>
+<blockquote><p><em>DEPRECATED &ndash; avoid using this. 
+Use the </em><samp><span class="command">arm mrc</span></samp><em> or </em><samp><span class="command">arm mcr</span></samp><em> commands instead.</em>
+
+     <p>Display cp15 register returned by the ARM instruction <var>opcode</var>;
+else if a <var>value</var> is provided, that value is written to that register. 
+The <var>opcode</var> should be the value of either an MRC or MCR instruction. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.3.3 ARM9 specific commands</h4>
+
+<p><a name="index-ARM9-451"></a>
+ARM9-family cores are built around ARM9TDMI or ARM9E (including ARM9EJS)
+integer processors. 
+Such cores include the ARM920T, ARM926EJ-S, and ARM966.
+
+<!-- 9-june-2009:  tried this on arm920t, it didn't work. -->
+<!-- no-params always lists nothing caught, and that's how it acts. -->
+<!-- 23-oct-2009:  doesn't work _consistently_ ... as if the ICE -->
+<!-- versions have different rules about when they commit writes. -->
+<p><a name="arm9-vector_005fcatch"></a>
+
+<div class="defun">
+&mdash; Command: <b>arm9 vector_catch</b> [<samp><span class="option">all</span></samp><var>|</var><samp><span class="option">none</span></samp><var>|list</var>]<var><a name="index-arm9-vector_005fcatch-452"></a></var><br>
+<blockquote><p><a name="index-vector_005fcatch-453"></a>Vector Catch hardware provides a sort of dedicated breakpoint
+for hardware events such as reset, interrupt, and abort. 
+You can use this to conserve normal breakpoint resources,
+so long as you're not concerned with code that branches directly
+to those hardware vectors.
+
+     <p>This always finishes by listing the current configuration. 
+If parameters are provided, it first reconfigures the
+vector catch hardware to intercept
+<samp><span class="option">all</span></samp> of the hardware vectors,
+<samp><span class="option">none</span></samp> of them,
+or a list with one or more of the following:
+<samp><span class="option">reset</span></samp> <samp><span class="option">undef</span></samp> <samp><span class="option">swi</span></samp> <samp><span class="option">pabt</span></samp> <samp><span class="option">dabt</span></samp>
+<samp><span class="option">irq</span></samp> <samp><span class="option">fiq</span></samp>. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.3.4 ARM920T specific commands</h4>
+
+<p><a name="index-ARM920T-454"></a>
+These commands are available to ARM920T based CPUs,
+which are implementations of the ARMv4T architecture
+built using the ARM9TDMI integer core. 
+They are available in addition to the ARM, ARM7/ARM9,
+and ARM9 commands.
+
+<div class="defun">
+&mdash; Command: <b>arm920t cache_info</b><var><a name="index-arm920t-cache_005finfo-455"></a></var><br>
+<blockquote><p>Print information about the caches found. This allows to see whether your target
+is an ARM920T (2x16kByte cache) or ARM922T (2x8kByte cache). 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm920t cp15</b><var> regnum </var>[<var>value</var>]<var><a name="index-arm920t-cp15-456"></a></var><br>
+<blockquote><p>Display cp15 register <var>regnum</var>;
+else if a <var>value</var> is provided, that value is written to that register. 
+This uses "physical access" and the register number is as
+shown in bits 38..33 of table 9-9 in the ARM920T TRM. 
+(Not all registers can be written.) 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm920t cp15i</b><var> opcode </var>[<var>value </var>[<var>address</var>]]<var><a name="index-arm920t-cp15i-457"></a></var><br>
+<blockquote><p><em>DEPRECATED &ndash; avoid using this. 
+Use the </em><samp><span class="command">arm mrc</span></samp><em> or </em><samp><span class="command">arm mcr</span></samp><em> commands instead.</em>
+
+     <p>Interpreted access using ARM instruction <var>opcode</var>, which should
+be the value of either an MRC or MCR instruction
+(as shown tables 9-11, 9-12, and 9-13 in the ARM920T TRM). 
+If no <var>value</var> is provided, the result is displayed. 
+Else if that value is written using the specified <var>address</var>,
+or using zero if no other address is provided. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm920t read_cache</b><var> filename<a name="index-arm920t-read_005fcache-458"></a></var><br>
+<blockquote><p>Dump the content of ICache and DCache to a file named <samp><span class="file">filename</span></samp>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm920t read_mmu</b><var> filename<a name="index-arm920t-read_005fmmu-459"></a></var><br>
+<blockquote><p>Dump the content of the ITLB and DTLB to a file named <samp><span class="file">filename</span></samp>. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.3.5 ARM926ej-s specific commands</h4>
+
+<p><a name="index-ARM926ej_002ds-460"></a>
+These commands are available to ARM926ej-s based CPUs,
+which are implementations of the ARMv5TEJ architecture
+based on the ARM9EJ-S integer core. 
+They are available in addition to the ARM, ARM7/ARM9,
+and ARM9 commands.
+
+<p>The Feroceon cores also support these commands, although
+they are not built from ARM926ej-s designs.
+
+<div class="defun">
+&mdash; Command: <b>arm926ejs cache_info</b><var><a name="index-arm926ejs-cache_005finfo-461"></a></var><br>
+<blockquote><p>Print information about the caches found. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.3.6 ARM966E specific commands</h4>
+
+<p><a name="index-ARM966E-462"></a>
+These commands are available to ARM966 based CPUs,
+which are implementations of the ARMv5TE architecture. 
+They are available in addition to the ARM, ARM7/ARM9,
+and ARM9 commands.
+
+<div class="defun">
+&mdash; Command: <b>arm966e cp15</b><var> regnum </var>[<var>value</var>]<var><a name="index-arm966e-cp15-463"></a></var><br>
+<blockquote><p>Display cp15 register <var>regnum</var>;
+else if a <var>value</var> is provided, that value is written to that register. 
+The six bit <var>regnum</var> values are bits 37..32 from table 7-2 of the
+ARM966E-S TRM. 
+There is no current control over bits 31..30 from that table,
+as required for BIST support. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.3.7 XScale specific commands</h4>
+
+<p><a name="index-XScale-464"></a>
+Some notes about the debug implementation on the XScale CPUs:
+
+<p>The XScale CPU provides a special debug-only mini-instruction cache
+(mini-IC) in which exception vectors and target-resident debug handler
+code are placed by OpenOCD. In order to get access to the CPU, OpenOCD
+must point vector 0 (the reset vector) to the entry of the debug
+handler. However, this means that the complete first cacheline in the
+mini-IC is marked valid, which makes the CPU fetch all exception
+handlers from the mini-IC, ignoring the code in RAM.
+
+<p>To address this situation, OpenOCD provides the <code>xscale
+vector_table</code> command, which allows the user to explicity write
+individual entries to either the high or low vector table stored in
+the mini-IC.
+
+<p>It is recommended to place a pc-relative indirect branch in the vector
+table, and put the branch destination somewhere in memory. Doing so
+makes sure the code in the vector table stays constant regardless of
+code layout in memory:
+<pre class="example">     _vectors:
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             ldr     pc,[pc,#0x100-8]
+             .org 0x100
+             .long real_reset_vector
+             .long real_ui_handler
+             .long real_swi_handler
+             .long real_pf_abort
+             .long real_data_abort
+             .long 0 /* unused */
+             .long real_irq_handler
+             .long real_fiq_handler
+</pre>
+<p>Alternatively, you may choose to keep some or all of the mini-IC
+vector table entries synced with those written to memory by your
+system software.  The mini-IC can not be modified while the processor
+is executing, but for each vector table entry not previously defined
+using the <code>xscale vector_table</code> command, OpenOCD will copy the
+value from memory to the mini-IC every time execution resumes from a
+halt.  This is done for both high and low vector tables (although the
+table not in use may not be mapped to valid memory, and in this case
+that copy operation will silently fail).  This means that you will
+need to briefly halt execution at some strategic point during system
+start-up; e.g., after the software has initialized the vector table,
+but before exceptions are enabled.  A breakpoint can be used to
+accomplish this once the appropriate location in the start-up code has
+been identified.  A watchpoint over the vector table region is helpful
+in finding the location if you're not sure.  Note that the same
+situation exists any time the vector table is modified by the system
+software.
+
+<p>The debug handler must be placed somewhere in the address space using
+the <code>xscale debug_handler</code> command.  The allowed locations for the
+debug handler are either (0x800 - 0x1fef800) or (0xfe000800 -
+0xfffff800). The default value is 0xfe000800.
+
+<p>XScale has resources to support two hardware breakpoints and two
+watchpoints.  However, the following restrictions on watchpoint
+functionality apply: (1) the value and mask arguments to the <code>wp</code>
+command are not supported, (2) the watchpoint length must be a
+power of two and not less than four, and can not be greater than the
+watchpoint address, and (3) a watchpoint with a length greater than
+four consumes all the watchpoint hardware resources.  This means that
+at any one time, you can have enabled either two watchpoints with a
+length of four, or one watchpoint with a length greater than four.
+
+<p>These commands are available to XScale based CPUs,
+which are implementations of the ARMv5TE architecture.
+
+<div class="defun">
+&mdash; Command: <b>xscale analyze_trace</b><var><a name="index-xscale-analyze_005ftrace-465"></a></var><br>
+<blockquote><p>Displays the contents of the trace buffer. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale cache_clean_address</b><var> address<a name="index-xscale-cache_005fclean_005faddress-466"></a></var><br>
+<blockquote><p>Changes the address used when cleaning the data cache. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale cache_info</b><var><a name="index-xscale-cache_005finfo-467"></a></var><br>
+<blockquote><p>Displays information about the CPU caches. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale cp15</b><var> regnum </var>[<var>value</var>]<var><a name="index-xscale-cp15-468"></a></var><br>
+<blockquote><p>Display cp15 register <var>regnum</var>;
+else if a <var>value</var> is provided, that value is written to that register. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale debug_handler</b><var> target address<a name="index-xscale-debug_005fhandler-469"></a></var><br>
+<blockquote><p>Changes the address used for the specified target's debug handler. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale dcache</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-xscale-dcache-470"></a></var><br>
+<blockquote><p>Enables or disable the CPU's data cache. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale dump_trace</b><var> filename<a name="index-xscale-dump_005ftrace-471"></a></var><br>
+<blockquote><p>Dumps the raw contents of the trace buffer to <samp><span class="file">filename</span></samp>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale icache</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-xscale-icache-472"></a></var><br>
+<blockquote><p>Enables or disable the CPU's instruction cache. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale mmu</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-xscale-mmu-473"></a></var><br>
+<blockquote><p>Enables or disable the CPU's memory management unit. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale trace_buffer</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp> [<samp><span class="option">fill</span></samp> [<var>n</var>]<var> | </var><samp><span class="option">wrap</span></samp>]]<var><a name="index-xscale-trace_005fbuffer-474"></a></var><br>
+<blockquote><p>Displays the trace buffer status, after optionally
+enabling or disabling the trace buffer
+and modifying how it is emptied. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>xscale trace_image</b><var> filename </var>[<var>offset </var>[<var>type</var>]]<var><a name="index-xscale-trace_005fimage-475"></a></var><br>
+<blockquote><p>Opens a trace image from <samp><span class="file">filename</span></samp>, optionally rebasing
+its segment addresses by <var>offset</var>. 
+The image <var>type</var> may be one of
+<samp><span class="option">bin</span></samp> (binary), <samp><span class="option">ihex</span></samp> (Intel hex),
+<samp><span class="option">elf</span></samp> (ELF file), <samp><span class="option">s19</span></samp> (Motorola s19),
+<samp><span class="option">mem</span></samp>, or <samp><span class="option">builder</span></samp>. 
+</p></blockquote></div>
+
+<p><a name="xscale-vector_005fcatch"></a>
+
+<div class="defun">
+&mdash; Command: <b>xscale vector_catch</b> [<var>mask</var>]<var><a name="index-xscale-vector_005fcatch-476"></a></var><br>
+<blockquote><p><a name="index-vector_005fcatch-477"></a>Display a bitmask showing the hardware vectors to catch. 
+If the optional parameter is provided, first set the bitmask to that value.
+
+     <p>The mask bits correspond with bit 16..23 in the DCSR:
+     <pre class="example">          0x01    Trap Reset
+          0x02    Trap Undefined Instructions
+          0x04    Trap Software Interrupt
+          0x08    Trap Prefetch Abort
+          0x10    Trap Data Abort
+          0x20    reserved
+          0x40    Trap IRQ
+          0x80    Trap FIQ
+</pre>
+     </blockquote></div>
+
+<p><a name="xscale-vector_005ftable"></a>
+
+<div class="defun">
+&mdash; Command: <b>xscale vector_table</b> [(<samp><span class="option">low</span></samp><var>|</var><samp><span class="option">high</span></samp>)<var> index value</var>]<var><a name="index-xscale-vector_005ftable-478"></a></var><br>
+<blockquote><p><a name="index-vector_005ftable-479"></a>
+Set an entry in the mini-IC vector table. There are two tables: one for
+low vectors (at 0x00000000), and one for high vectors (0xFFFF0000), each
+holding the 8 exception vectors. <var>index</var> can be 1-7, because vector 0
+points to the debug handler entry and can not be overwritten. 
+<var>value</var> holds the 32-bit opcode that is placed in the mini-IC.
+
+     <p>Without arguments, the current settings are displayed.
+
+     </blockquote></div>
+
+<h3 class="section">17.4 ARMv6 Architecture</h3>
+
+<p><a name="index-ARMv6-480"></a>
+
+<h4 class="subsection">17.4.1 ARM11 specific commands</h4>
+
+<p><a name="index-ARM11-481"></a>
+
+<div class="defun">
+&mdash; Command: <b>arm11 memwrite burst</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm11-memwrite-burst-482"></a></var><br>
+<blockquote><p>Displays the value of the memwrite burst-enable flag,
+which is enabled by default. 
+If a boolean parameter is provided, first assigns that flag. 
+Burst writes are only used for memory writes larger than 1 word. 
+They improve performance by assuming that the CPU has read each data
+word over JTAG and completed its write before the next word arrives,
+instead of polling for a status flag to verify that completion. 
+This is usually safe, because JTAG runs much slower than the CPU. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm11 memwrite error_fatal</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm11-memwrite-error_005ffatal-483"></a></var><br>
+<blockquote><p>Displays the value of the memwrite error_fatal flag,
+which is enabled by default. 
+If a boolean parameter is provided, first assigns that flag. 
+When set, certain memory write errors cause earlier transfer termination. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm11 step_irq_enable</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-arm11-step_005firq_005fenable-484"></a></var><br>
+<blockquote><p>Displays the value of the flag controlling whether
+IRQs are enabled during single stepping;
+they are disabled by default. 
+If a boolean parameter is provided, first assigns that. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>arm11 vcr</b> [<var>value</var>]<var><a name="index-arm11-vcr-485"></a></var><br>
+<blockquote><p><a name="index-vector_005fcatch-486"></a>Displays the value of the <em>Vector Catch Register (VCR)</em>,
+coprocessor 14 register 7. 
+If <var>value</var> is defined, first assigns that.
+
+     <p>Vector Catch hardware provides dedicated breakpoints
+for certain hardware events. 
+The specific bit values are core-specific (as in fact is using
+coprocessor 14 register 7 itself) but all current ARM11
+cores <em>except the ARM1176</em> use the same six bits. 
+</p></blockquote></div>
+
+<h3 class="section">17.5 ARMv7 Architecture</h3>
+
+<p><a name="index-ARMv7-487"></a>
+
+<h4 class="subsection">17.5.1 ARMv7 Debug Access Port (DAP) specific commands</h4>
+
+<p><a name="index-Debug-Access-Port-488"></a><a name="index-DAP-489"></a>These commands are specific to ARM architecture v7 Debug Access Port (DAP),
+included on Cortex-M3 and Cortex-A8 systems. 
+They are available in addition to other core-specific commands that may be available.
+
+<div class="defun">
+&mdash; Command: <b>dap apid</b> [<var>num</var>]<var><a name="index-dap-apid-490"></a></var><br>
+<blockquote><p>Displays ID register from AP <var>num</var>,
+defaulting to the currently selected AP. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>dap apsel</b> [<var>num</var>]<var><a name="index-dap-apsel-491"></a></var><br>
+<blockquote><p>Select AP <var>num</var>, defaulting to 0. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>dap baseaddr</b> [<var>num</var>]<var><a name="index-dap-baseaddr-492"></a></var><br>
+<blockquote><p>Displays debug base address from MEM-AP <var>num</var>,
+defaulting to the currently selected AP. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>dap info</b> [<var>num</var>]<var><a name="index-dap-info-493"></a></var><br>
+<blockquote><p>Displays the ROM table for MEM-AP <var>num</var>,
+defaulting to the currently selected AP. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>dap memaccess</b> [<var>value</var>]<var><a name="index-dap-memaccess-494"></a></var><br>
+<blockquote><p>Displays the number of extra tck cycles in the JTAG idle to use for MEM-AP
+memory bus access [0-255], giving additional time to respond to reads. 
+If <var>value</var> is defined, first assigns that. 
+</p></blockquote></div>
+
+<h4 class="subsection">17.5.2 Cortex-M3 specific commands</h4>
+
+<p><a name="index-Cortex_002dM3-495"></a>
+
+<div class="defun">
+&mdash; Command: <b>cortex_m3 maskisr</b> (<samp><span class="option">auto</span></samp><var>|</var><samp><span class="option">on</span></samp><var>|</var><samp><span class="option">off</span></samp>)<var><a name="index-cortex_005fm3-maskisr-496"></a></var><br>
+<blockquote><p>Control masking (disabling) interrupts during target step/resume.
+
+     <p>The <samp><span class="option">auto</span></samp> option handles interrupts during stepping a way they get
+served but don't disturb the program flow. The step command first allows
+pending interrupt handlers to execute, then disables interrupts and steps over
+the next instruction where the core was halted. After the step interrupts
+are enabled again. If the interrupt handlers don't complete within 500ms,
+the step command leaves with the core running.
+
+     <p>Note that a free breakpoint is required for the <samp><span class="option">auto</span></samp> option. If no
+breakpoint is available at the time of the step, then the step is taken
+with interrupts enabled, i.e. the same way the <samp><span class="option">off</span></samp> option does.
+
+     <p>Default is <samp><span class="option">auto</span></samp>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>cortex_m3 vector_catch</b> [<samp><span class="option">all</span></samp><var>|</var><samp><span class="option">none</span></samp><var>|list</var>]<var><a name="index-cortex_005fm3-vector_005fcatch-497"></a></var><br>
+<blockquote><p><a name="index-vector_005fcatch-498"></a>Vector Catch hardware provides dedicated breakpoints
+for certain hardware events.
+
+     <p>Parameters request interception of
+<samp><span class="option">all</span></samp> of these hardware event vectors,
+<samp><span class="option">none</span></samp> of them,
+or one or more of the following:
+<samp><span class="option">hard_err</span></samp> for a HardFault exception;
+<samp><span class="option">mm_err</span></samp> for a MemManage exception;
+<samp><span class="option">bus_err</span></samp> for a BusFault exception;
+<samp><span class="option">irq_err</span></samp>,
+<samp><span class="option">state_err</span></samp>,
+<samp><span class="option">chk_err</span></samp>, or
+<samp><span class="option">nocp_err</span></samp> for various UsageFault exceptions; or
+<samp><span class="option">reset</span></samp>. 
+If NVIC setup code does not enable them,
+MemManage, BusFault, and UsageFault exceptions
+are mapped to HardFault. 
+UsageFault checks for
+divide-by-zero and unaligned access
+must also be explicitly enabled.
+
+     <p>This finishes by listing the current vector catch configuration. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>cortex_m3 reset_config</b> (<samp><span class="option">srst</span></samp><var>|</var><samp><span class="option">sysresetreq</span></samp><var>|</var><samp><span class="option">vectreset</span></samp>)<var><a name="index-cortex_005fm3-reset_005fconfig-499"></a></var><br>
+<blockquote><p>Control reset handling. The default <samp><span class="option">srst</span></samp> is to use srst if fitted,
+otherwise fallback to <samp><span class="option">vectreset</span></samp>.
+          <ul>
+<li><samp><span class="option">srst</span></samp> use hardware srst if fitted otherwise fallback to <samp><span class="option">vectreset</span></samp>. 
+<li><samp><span class="option">sysresetreq</span></samp> use NVIC SYSRESETREQ to reset system. 
+<li><samp><span class="option">vectreset</span></samp> use NVIC VECTRESET to reset system. 
+</ul>
+     Using <samp><span class="option">vectreset</span></samp> is a safe option for all current Cortex-M3 cores. 
+This however has the disadvantage of only resetting the core, all peripherals
+are uneffected. A solution would be to use a <code>reset-init</code> event handler to manually reset
+the peripherals. 
+See <a href="Target-Events.html#Target-Events">Target Events</a>. 
+</p></blockquote></div>
+
+<p><a name="Software-Debug-Messages-and-Tracing"></a>
+
+<h3 class="section">17.6 Software Debug Messages and Tracing</h3>
+
+<p><a name="index-Linux_002dARM-DCC-support-500"></a><a name="index-tracing-501"></a><a name="index-libdcc-502"></a><a name="index-DCC-503"></a>OpenOCD can process certain requests from target software, when
+the target uses appropriate libraries. 
+The most powerful mechanism is semihosting, but there is also
+a lighter weight mechanism using only the DCC channel.
+
+<p>Currently <samp><span class="command">target_request debugmsgs</span></samp>
+is supported only for <samp><span class="option">arm7_9</span></samp> and <samp><span class="option">cortex_m3</span></samp> cores. 
+These messages are received as part of target polling, so
+you need to have <samp><span class="command">poll on</span></samp> active to receive them. 
+They are intrusive in that they will affect program execution
+times.  If that is a problem, see <a href="ARM-Hardware-Tracing.html#ARM-Hardware-Tracing">ARM Hardware Tracing</a>.
+
+<p>See <samp><span class="file">libdcc</span></samp> in the contrib dir for more details. 
+In addition to sending strings, characters, and
+arrays of various size integers from the target,
+<samp><span class="file">libdcc</span></samp> also exports a software trace point mechanism. 
+The target being debugged may
+issue trace messages which include a 24-bit <dfn>trace point</dfn> number. 
+Trace point support includes two distinct mechanisms,
+each supported by a command:
+
+     <ul>
+<li><em>History</em> ... A circular buffer of trace points
+can be set up, and then displayed at any time. 
+This tracks where code has been, which can be invaluable in
+finding out how some fault was triggered.
+
+     <p>The buffer may overflow, since it collects records continuously. 
+It may be useful to use some of the 24 bits to represent a
+particular event, and other bits to hold data.
+
+     <li><em>Counting</em> ... An array of counters can be set up,
+and then displayed at any time. 
+This can help establish code coverage and identify hot spots.
+
+     <p>The array of counters is directly indexed by the trace point
+number, so trace points with higher numbers are not counted. 
+</ul>
+
+<p>Linux-ARM kernels have a &ldquo;Kernel low-level debugging
+via EmbeddedICE DCC channel&rdquo; option (CONFIG_DEBUG_ICEDCC,
+depends on CONFIG_DEBUG_LL) which uses this mechanism to
+deliver messages before a serial console can be activated. 
+This is not the same format used by <samp><span class="file">libdcc</span></samp>. 
+Other software, such as the U-Boot boot loader, sometimes
+does the same thing.
+
+<div class="defun">
+&mdash; Command: <b>target_request debugmsgs</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp><var>|</var><samp><span class="option">charmsg</span></samp>]<var><a name="index-target_005frequest-debugmsgs-504"></a></var><br>
+<blockquote><p>Displays current handling of target DCC message requests. 
+These messages may be sent to the debugger while the target is running. 
+The optional <samp><span class="option">enable</span></samp> and <samp><span class="option">charmsg</span></samp> parameters
+both enable the messages, while <samp><span class="option">disable</span></samp> disables them.
+
+     <p>With <samp><span class="option">charmsg</span></samp> the DCC words each contain one character,
+as used by Linux with CONFIG_DEBUG_ICEDCC;
+otherwise the libdcc format is used. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>trace history</b> [<samp><span class="option">clear</span></samp><var>|count</var>]<var><a name="index-trace-history-505"></a></var><br>
+<blockquote><p>With no parameter, displays all the trace points that have triggered
+in the order they triggered. 
+With the parameter <samp><span class="option">clear</span></samp>, erases all current trace history records. 
+With a <var>count</var> parameter, allocates space for that many
+history records. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>trace point</b> [<samp><span class="option">clear</span></samp><var>|identifier</var>]<var><a name="index-trace-point-506"></a></var><br>
+<blockquote><p>With no parameter, displays all trace point identifiers and how many times
+they have been triggered. 
+With the parameter <samp><span class="option">clear</span></samp>, erases all current trace point counters. 
+With a numeric <var>identifier</var> parameter, creates a new a trace point counter
+and associates it with that identifier.
+
+     <p><em>Important:</em>  The identifier and the trace point number
+are not related except by this command. 
+These trace point numbers always start at zero (from server startup,
+or after <samp><span class="command">trace point clear</span></samp>) and count up from there. 
+</p></blockquote></div>
+
+</body></html>
+

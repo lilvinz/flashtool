@@ -1,0 +1,885 @@
+<html lang="en">
+<head>
+<title>Debug Adapter Configuration - OpenOCD User's Guide</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="OpenOCD User's Guide">
+<meta name="generator" content="makeinfo 4.13">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Daemon-Configuration.html#Daemon-Configuration" title="Daemon Configuration">
+<link rel="next" href="Reset-Configuration.html#Reset-Configuration" title="Reset Configuration">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+This User's Guide documents
+release 0.7.0-dev,
+dated 24 March 2013,
+of the Open On-Chip Debugger (OpenOCD).
+   * Copyright (C) 2008 The OpenOCD Project
+
+   * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
+
+   * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
+
+   * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
+
+   * Copyright (C) 2009-2010 David Brownell
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.2 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled ``GNU Free Documentation License''.
+-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<a name="Debug-Adapter-Configuration"></a>
+<p>
+Next:&nbsp;<a rel="next" accesskey="n" href="Reset-Configuration.html#Reset-Configuration">Reset Configuration</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Daemon-Configuration.html#Daemon-Configuration">Daemon Configuration</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">8 Debug Adapter Configuration</h2>
+
+<p><a name="index-config-file_002c-interface-53"></a><a name="index-interface-config-file-54"></a>
+Correctly installing OpenOCD includes making your operating system give
+OpenOCD access to debug adapters.  Once that has been done, Tcl commands
+are used to select which one is used, and to configure how it is used.
+
+<blockquote>
+<b>Note:</b> Because OpenOCD started out with a focus purely on JTAG, you may find
+places where it wrongly presumes JTAG is the only transport protocol
+in use.  Be aware that recent versions of OpenOCD are removing that
+limitation.  JTAG remains more functional than most other transports. 
+Other transports do not support boundary scan operations, or may be
+specific to a given chip vendor.  Some might be usable only for
+programming flash memory, instead of also for debugging. 
+</blockquote>
+
+<p>Debug Adapters/Interfaces/Dongles are normally configured
+through commands in an interface configuration
+file which is sourced by your <samp><span class="file">openocd.cfg</span></samp> file, or
+through a command line <samp><span class="option">-f interface/....cfg</span></samp> option.
+
+<pre class="example">     source [find interface/olimex-jtag-tiny.cfg]
+</pre>
+<p>These commands tell
+OpenOCD what type of JTAG adapter you have, and how to talk to it. 
+A few cases are so simple that you only need to say what driver to use:
+
+<pre class="example">     # jlink interface
+     interface jlink
+</pre>
+<p>Most adapters need a bit more configuration than that.
+
+<h3 class="section">8.1 Interface Configuration</h3>
+
+<p>The interface command tells OpenOCD what type of debug adapter you are
+using. Depending on the type of adapter, you may need to use one or
+more additional commands to further identify or configure the adapter.
+
+<div class="defun">
+&mdash; Config Command: <b>interface</b><var> name<a name="index-interface-55"></a></var><br>
+<blockquote><p>Use the interface driver <var>name</var> to connect to the
+target. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>interface_list</b><var><a name="index-interface_005flist-56"></a></var><br>
+<blockquote><p>List the debug adapter drivers that have been built into
+the running copy of OpenOCD. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>interface transports</b><var> transport_name+<a name="index-interface-transports-57"></a></var><br>
+<blockquote><p>Specifies the transports supported by this debug adapter. 
+The adapter driver builds-in similar knowledge; use this only
+when external configuration (such as jumpering) changes what
+the hardware can support. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>adapter_name</b><var><a name="index-adapter_005fname-58"></a></var><br>
+<blockquote><p>Returns the name of the debug adapter driver being used. 
+</p></blockquote></div>
+
+<h3 class="section">8.2 Interface Drivers</h3>
+
+<p>Each of the interface drivers listed here must be explicitly
+enabled when OpenOCD is configured, in order to be made
+available at run time.
+
+<div class="defun">
+&mdash; Interface Driver: <b>amt_jtagaccel</b><var><a name="index-amt_005fjtagaccel-59"></a></var><br>
+<blockquote><p>Amontec Chameleon in its JTAG Accelerator configuration,
+connected to a PC's EPP mode parallel port. 
+This defines some driver-specific commands:
+
+     <div class="defun">
+&mdash; Config Command: <b>parport_port</b><var> number<a name="index-parport_005fport-60"></a></var><br>
+<blockquote><p>Specifies either the address of the I/O port (default: 0x378 for LPT1) or
+the number of the <samp><span class="file">/dev/parport</span></samp> device. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>rtck</b> [<samp><span class="option">enable</span></samp><var>|</var><samp><span class="option">disable</span></samp>]<var><a name="index-rtck-61"></a></var><br>
+<blockquote><p>Displays status of RTCK option. 
+Optionally sets that option first. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>arm-jtag-ew</b><var><a name="index-arm_002djtag_002dew-62"></a></var><br>
+<blockquote><p>Olimex ARM-JTAG-EW USB adapter
+This has one driver-specific command:
+
+     <div class="defun">
+&mdash; Command: <b>armjtagew_info</b><var><a name="index-armjtagew_005finfo-63"></a></var><br>
+<blockquote><p>Logs some status
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>at91rm9200</b><var><a name="index-at91rm9200-64"></a></var><br>
+<blockquote><p>Supports bitbanged JTAG from the local system,
+presuming that system is an Atmel AT91rm9200
+and a specific set of GPIOs is used. 
+<!-- command:	at91rm9200_device NAME -->
+<!-- chooses among list of bit configs ... only one option -->
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>dummy</b><var><a name="index-dummy-65"></a></var><br>
+<blockquote><p>A dummy software-only driver for debugging. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>ep93xx</b><var><a name="index-ep93xx-66"></a></var><br>
+<blockquote><p>Cirrus Logic EP93xx based single-board computer bit-banging (in development)
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>ft2232</b><var><a name="index-ft2232-67"></a></var><br>
+<blockquote><p>FTDI FT2232 (USB) based devices over one of the userspace libraries.
+
+     <p>Note that this driver has several flaws and the <samp><span class="command">ftdi</span></samp> driver is
+recommended as its replacement.
+
+     <p>These interfaces have several commands, used to configure the driver
+before initializing the JTAG scan chain:
+
+     <div class="defun">
+&mdash; Config Command: <b>ft2232_device_desc</b><var> description<a name="index-ft2232_005fdevice_005fdesc-68"></a></var><br>
+<blockquote><p>Provides the USB device description (the <em>iProduct string</em>)
+of the FTDI FT2232 device. If not
+specified, the FTDI default value is used. This setting is only valid
+if compiled with FTD2XX support. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ft2232_serial</b><var> serial-number<a name="index-ft2232_005fserial-69"></a></var><br>
+<blockquote><p>Specifies the <var>serial-number</var> of the FTDI FT2232 device to use,
+in case the vendor provides unique IDs and more than one FT2232 device
+is connected to the host. 
+If not specified, serial numbers are not considered. 
+(Note that USB serial numbers can be arbitrary Unicode strings,
+and are not restricted to containing only decimal digits.) 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ft2232_layout</b><var> name<a name="index-ft2232_005flayout-70"></a></var><br>
+<blockquote><p>Each vendor's FT2232 device can use different GPIO signals
+to control output-enables, reset signals, and LEDs. 
+Currently valid layout <var>name</var> values include:
+               <ul>
+<li><b>axm0432_jtag</b> Axiom AXM-0432
+<li><b>comstick</b> Hitex STR9 comstick
+<li><b>cortino</b> Hitex Cortino JTAG interface
+<li><b>evb_lm3s811</b> TI/Luminary Micro EVB_LM3S811 as a JTAG interface,
+either for the local Cortex-M3 (SRST only)
+or in a passthrough mode (neither SRST nor TRST)
+This layout can not support the SWO trace mechanism, and should be
+used only for older boards (before rev C). 
+<li><b>luminary_icdi</b> This layout should be used with most TI/Luminary
+eval boards, including Rev C LM3S811 eval boards and the eponymous
+ICDI boards, to debug either the local Cortex-M3 or in passthrough mode
+to debug some other target.  It can support the SWO trace mechanism. 
+<li><b>flyswatter</b> Tin Can Tools Flyswatter
+<li><b>icebear</b> ICEbear JTAG adapter from Section 5
+<li><b>jtagkey</b> Amontec JTAGkey and JTAGkey-Tiny (and compatibles)
+<li><b>jtagkey2</b> Amontec JTAGkey2 (and compatibles)
+<li><b>m5960</b> American Microsystems M5960
+<li><b>olimex-jtag</b> Olimex ARM-USB-OCD and ARM-USB-Tiny
+<li><b>oocdlink</b> OOCDLink
+<!-- oocdlink ~= jtagkey_prototype_v1 -->
+<li><b>redbee-econotag</b> Integrated with a Redbee development board. 
+<li><b>redbee-usb</b> Integrated with a Redbee USB-stick development board. 
+<li><b>sheevaplug</b> Marvell Sheevaplug development kit
+<li><b>signalyzer</b> Xverve Signalyzer
+<li><b>stm32stick</b> Hitex STM32 Performance Stick
+<li><b>turtelizer2</b> egnite Software turtelizer2
+<li><b>usbjtag</b> "USBJTAG-1" layout described in the OpenOCD diploma thesis
+</ul>
+          </p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ft2232_vid_pid</b> [<var>vid pid</var>]<var>+<a name="index-ft2232_005fvid_005fpid-71"></a></var><br>
+<blockquote><p>The vendor ID and product ID of the FTDI FT2232 device. If not specified, the FTDI
+default values are used. 
+Currently, up to eight [<var>vid</var>, <var>pid</var>] pairs may be given, e.g.
+          <pre class="example">               ft2232_vid_pid 0x0403 0xcff8 0x15ba 0x0003
+</pre>
+          </blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ft2232_latency</b><var> ms<a name="index-ft2232_005flatency-72"></a></var><br>
+<blockquote><p>On some systems using FT2232 based JTAG interfaces the FT_Read function call in
+ft2232_read() fails to return the expected number of bytes. This can be caused by
+USB communication delays and has proved hard to reproduce and debug. Setting the
+FT2232 latency timer to a larger value increases delays for short USB packets but it
+also reduces the risk of timeouts before receiving the expected number of bytes. 
+The OpenOCD default value is 2 and for some systems a value of 10 has proved useful. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ft2232_channel</b><var> channel<a name="index-ft2232_005fchannel-73"></a></var><br>
+<blockquote><p>Used to select the channel of the ft2232 chip to use (between 1 and 4). 
+The default value is 1. 
+</p></blockquote></div>
+
+     <p>For example, the interface config file for a
+Turtelizer JTAG Adapter looks something like this:
+
+     <pre class="example">          interface ft2232
+          ft2232_device_desc "Turtelizer JTAG/RS232 Adapter"
+          ft2232_layout turtelizer2
+          ft2232_vid_pid 0x0403 0xbdc8
+</pre>
+     </blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>ftdi</b><var><a name="index-ftdi-74"></a></var><br>
+<blockquote><p>This driver is for adapters using the MPSSE (Multi-Protocol Synchronous Serial
+Engine) mode built into many FTDI chips, such as the FT2232, FT4232 and FT232H. 
+It is a complete rewrite to address a large number of problems with the ft2232
+interface driver.
+
+     <p>The driver is using libusb-1.0 in asynchronous mode to talk to the FTDI device,
+bypassing intermediate libraries like libftdi of D2XX. Performance-wise it is
+consistently faster than the ft2232 driver, sometimes several times faster.
+
+     <p>A major improvement of this driver is that support for new FTDI based adapters
+can be added competely through configuration files, without the need to patch
+and rebuild OpenOCD.
+
+     <p>The driver uses a signal abstraction to enable Tcl configuration files to
+define outputs for one or several FTDI GPIO. These outputs can then be
+controlled using the <samp><span class="command">ftdi_set_signal</span></samp> command. Special signal names
+are reserved for nTRST, nSRST and LED (for blink) so that they, if defined,
+will be used for their customary purpose.
+
+     <p>Depending on the type of buffer attached to the FTDI GPIO, the outputs have to
+be controlled differently. In order to support tristateable signals such as
+nSRST, both a data GPIO and an output-enable GPIO can be specified for each
+signal. The following output buffer configurations are supported:
+
+          <ul>
+<li>Push-pull with one FTDI output as (non-)inverted data line
+<li>Open drain with one FTDI output as (non-)inverted output-enable
+<li>Tristate with one FTDI output as (non-)inverted data line and another
+      FTDI output as (non-)inverted output-enable
+<li>Unbuffered, using the FTDI GPIO as a tristate output directly by
+      switching data and direction as necessary
+</ul>
+
+     <p>These interfaces have several commands, used to configure the driver
+before initializing the JTAG scan chain:
+
+     <div class="defun">
+&mdash; Config Command: <b>ftdi_vid_pid</b> [<var>vid pid</var>]<var>+<a name="index-ftdi_005fvid_005fpid-75"></a></var><br>
+<blockquote><p>The vendor ID and product ID of the adapter. If not specified, the FTDI
+default values are used. 
+Currently, up to eight [<var>vid</var>, <var>pid</var>] pairs may be given, e.g.
+          <pre class="example">               ftdi_vid_pid 0x0403 0xcff8 0x15ba 0x0003
+</pre>
+          </blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ftdi_device_desc</b><var> description<a name="index-ftdi_005fdevice_005fdesc-76"></a></var><br>
+<blockquote><p>Provides the USB device description (the <em>iProduct string</em>)
+of the adapter. If not specified, the device description is ignored
+during device selection. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ftdi_serial</b><var> serial-number<a name="index-ftdi_005fserial-77"></a></var><br>
+<blockquote><p>Specifies the <var>serial-number</var> of the adapter to use,
+in case the vendor provides unique IDs and more than one adapter
+is connected to the host. 
+If not specified, serial numbers are not considered. 
+(Note that USB serial numbers can be arbitrary Unicode strings,
+and are not restricted to containing only decimal digits.) 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ftdi_channel</b><var> channel<a name="index-ftdi_005fchannel-78"></a></var><br>
+<blockquote><p>Selects the channel of the FTDI device to use for MPSSE operations. Most
+adapters use the default, channel 0, but there are exceptions. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ftdi_layout_init</b><var> data direction<a name="index-ftdi_005flayout_005finit-79"></a></var><br>
+<blockquote><p>Specifies the initial values of the FTDI GPIO data and direction registers. 
+Each value is a 16-bit number corresponding to the concatenation of the high
+and low FTDI GPIO registers. The values should be selected based on the
+schematics of the adapter, such that all signals are set to safe levels with
+minimal impact on the target system. Avoid floating inputs, conflicting outputs
+and initially asserted reset signals. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>ftdi_layout_signal</b><var> name </var>[<samp><span class="option">-data</span></samp><var>|</var><samp><span class="option">-ndata</span></samp><var> data_mask</var>] [<samp><span class="option">-oe</span></samp><var>|</var><samp><span class="option">-noe</span></samp><var> oe_mask</var>]<var><a name="index-ftdi_005flayout_005fsignal-80"></a></var><br>
+<blockquote><p>Creates a signal with the specified <var>name</var>, controlled by one or more FTDI
+GPIO pins via a range of possible buffer connections. The masks are FTDI GPIO
+register bitmasks to tell the driver the connection and type of the output
+buffer driving the respective signal. <var>data_mask</var> is the bitmask for the
+pin(s) connected to the data input of the output buffer. <samp><span class="option">-ndata</span></samp> is
+used with inverting data inputs and <samp><span class="option">-data</span></samp> with non-inverting inputs. 
+The <samp><span class="option">-oe</span></samp> (or <samp><span class="option">-noe</span></samp>) option tells where the output-enable (or
+not-output-enable) input to the output buffer is connected.
+
+          <p>Both <var>data_mask</var> and <var>oe_mask</var> need not be specified. For example, a
+simple open-collector transistor driver would be specified with <samp><span class="option">-oe</span></samp>
+only. In that case the signal can only be set to drive low or to Hi-Z and the
+driver will complain if the signal is set to drive high. Which means that if
+it's a reset signal, <samp><span class="command">reset_config</span></samp> must be specified as
+<samp><span class="option">srst_open_drain</span></samp>, not <samp><span class="option">srst_push_pull</span></samp>.
+
+          <p>A special case is provided when <samp><span class="option">-data</span></samp> and <samp><span class="option">-oe</span></samp> is set to the
+same bitmask. Then the FTDI pin is considered being connected straight to the
+target without any buffer. The FTDI pin is then switched between output and
+input as necessary to provide the full set of low, high and Hi-Z
+characteristics. In all other cases, the pins specified in a signal definition
+are always driven by the FTDI. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>ftdi_set_signal</b><var> name </var><samp><span class="option">0</span></samp><var>|</var><samp><span class="option">1</span></samp><var>|</var><samp><span class="option">z</span></samp><var><a name="index-ftdi_005fset_005fsignal-81"></a></var><br>
+<blockquote><p>Set a previously defined signal to the specified level.
+               <ul>
+<li><samp><span class="option">0</span></samp>, drive low
+<li><samp><span class="option">1</span></samp>, drive high
+<li><samp><span class="option">z</span></samp>, set to high-impedance
+</ul>
+          </p></blockquote></div>
+
+     <p>For example adapter definitions, see the configuration files shipped in the
+<samp><span class="file">interface/ftdi</span></samp> directory. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>remote_bitbang</b><var><a name="index-remote_005fbitbang-82"></a></var><br>
+<blockquote><p>Drive JTAG from a remote process. This sets up a UNIX or TCP socket connection
+with a remote process and sends ASCII encoded bitbang requests to that process
+instead of directly driving JTAG.
+
+     <p>The remote_bitbang driver is useful for debugging software running on
+processors which are being simulated.
+
+     <div class="defun">
+&mdash; Config Command: <b>remote_bitbang_port</b><var> number<a name="index-remote_005fbitbang_005fport-83"></a></var><br>
+<blockquote><p>Specifies the TCP port of the remote process to connect to or 0 to use UNIX
+sockets instead of TCP. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>remote_bitbang_host</b><var> hostname<a name="index-remote_005fbitbang_005fhost-84"></a></var><br>
+<blockquote><p>Specifies the hostname of the remote process to connect to using TCP, or the
+name of the UNIX socket to use if remote_bitbang_port is 0. 
+</p></blockquote></div>
+
+     <p>For example, to connect remotely via TCP to the host foobar you might have
+something like:
+
+     <pre class="example">          interface remote_bitbang
+          remote_bitbang_port 3335
+          remote_bitbang_host foobar
+</pre>
+     <p>To connect to another process running locally via UNIX sockets with socket
+named mysocket:
+
+     <pre class="example">          interface remote_bitbang
+          remote_bitbang_port 0
+          remote_bitbang_host mysocket
+</pre>
+     </blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>usb_blaster</b><var><a name="index-usb_005fblaster-85"></a></var><br>
+<blockquote><p>USB JTAG/USB-Blaster compatibles over one of the userspace libraries
+for FTDI chips.  These interfaces have several commands, used to
+configure the driver before initializing the JTAG scan chain:
+
+     <div class="defun">
+&mdash; Config Command: <b>usb_blaster_device_desc</b><var> description<a name="index-usb_005fblaster_005fdevice_005fdesc-86"></a></var><br>
+<blockquote><p>Provides the USB device description (the <em>iProduct string</em>)
+of the FTDI FT245 device. If not
+specified, the FTDI default value is used. This setting is only valid
+if compiled with FTD2XX support. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>usb_blaster_vid_pid</b><var> vid pid<a name="index-usb_005fblaster_005fvid_005fpid-87"></a></var><br>
+<blockquote><p>The vendor ID and product ID of the FTDI FT245 device. If not specified,
+default values are used. 
+Currently, only one <var>vid</var>, <var>pid</var> pair may be given, e.g. for
+Altera USB-Blaster (default):
+          <pre class="example">               usb_blaster_vid_pid 0x09FB 0x6001
+</pre>
+          <p>The following VID/PID is for Kolja Waschk's USB JTAG:
+          <pre class="example">               usb_blaster_vid_pid 0x16C0 0x06AD
+</pre>
+          </blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>usb_blaster</b> (<samp><span class="option">pin6</span></samp><var>|</var><samp><span class="option">pin8</span></samp>) (<samp><span class="option">0</span></samp><var>|</var><samp><span class="option">1</span></samp>)<var><a name="index-usb_005fblaster-88"></a></var><br>
+<blockquote><p>Sets the state of the unused GPIO pins on USB-Blasters (pins 6 and 8 on the
+female JTAG header). These pins can be used as SRST and/or TRST provided the
+appropriate connections are made on the target board.
+
+          <p>For example, to use pin 6 as SRST (as with an AVR board):
+          <pre class="example">               $_TARGETNAME configure -event reset-assert \
+                     "usb_blaster pin6 1; wait 1; usb_blaster pin6 0"
+</pre>
+          </blockquote></div>
+
+     </blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>gw16012</b><var><a name="index-gw16012-89"></a></var><br>
+<blockquote><p>Gateworks GW16012 JTAG programmer. 
+This has one driver-specific command:
+
+     <div class="defun">
+&mdash; Config Command: <b>parport_port</b> [<var>port_number</var>]<var><a name="index-parport_005fport-90"></a></var><br>
+<blockquote><p>Display either the address of the I/O port
+(default: 0x378 for LPT1) or the number of the <samp><span class="file">/dev/parport</span></samp> device. 
+If a parameter is provided, first switch to use that port. 
+This is a write-once setting. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>jlink</b><var><a name="index-jlink-91"></a></var><br>
+<blockquote><p>Segger J-Link family of USB adapters. It currently supports only the JTAG transport.
+
+     <blockquote>
+<b>Compatibility Note:</b> Segger released many firmware versions for the many harware versions they
+produced. OpenOCD was extensively tested and intended to run on all of them,
+but some combinations were reported as incompatible. As a general
+recommendation, it is advisable to use the latest firmware version
+available for each hardware version. However the current V8 is a moving
+target, and Segger firmware versions released after the OpenOCD was
+released may not be compatible. In such cases it is recommended to
+revert to the last known functional version. For 0.5.0, this is from
+"Feb  8 2012 14:30:39", packed with 4.42c. For 0.6.0, the last known
+version is from "May  3 2012 18:36:22", packed with 4.46f. 
+</blockquote>
+
+     <div class="defun">
+&mdash; Command: <b>jlink caps</b><var><a name="index-jlink-caps-92"></a></var><br>
+<blockquote><p>Display the device firmware capabilities. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink info</b><var><a name="index-jlink-info-93"></a></var><br>
+<blockquote><p>Display various device information, like hardware version, firmware version, current bus status. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink hw_jtag</b> [<samp><span class="option">2</span></samp><var>|</var><samp><span class="option">3</span></samp>]<var><a name="index-jlink-hw_005fjtag-94"></a></var><br>
+<blockquote><p>Set the JTAG protocol version to be used. Without argument, show the actual JTAG protocol version. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config</b><var><a name="index-jlink-config-95"></a></var><br>
+<blockquote><p>Display the J-Link configuration. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config kickstart</b> [<var>val</var>]<var><a name="index-jlink-config-kickstart-96"></a></var><br>
+<blockquote><p>Set the Kickstart power on JTAG-pin 19. Without argument, show the Kickstart configuration. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config mac_address</b> [<samp><span class="option">ff:ff:ff:ff:ff:ff</span></samp>]<var><a name="index-jlink-config-mac_005faddress-97"></a></var><br>
+<blockquote><p>Set the MAC address of the J-Link Pro. Without argument, show the MAC address. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config ip</b> [<samp><span class="option">A.B.C.D</span></samp>(<samp><span class="option">/E</span></samp><var>|</var><samp><span class="option">F.G.H.I</span></samp>)]<var><a name="index-jlink-config-ip-98"></a></var><br>
+<blockquote><p>Set the IP configuration of the J-Link Pro, where A.B.C.D is the IP address,
+     E the bit of the subnet mask and
+     F.G.H.I the subnet mask. Without arguments, show the IP configuration. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config usb_address</b> [<samp><span class="option">0x00</span></samp><var> to </var><samp><span class="option">0x03</span></samp><var> or </var><samp><span class="option">0xff</span></samp>]<var><a name="index-jlink-config-usb_005faddress-99"></a></var><br>
+<blockquote><p>Set the USB address; this will also change the product id. Without argument, show the USB address. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config reset</b><var><a name="index-jlink-config-reset-100"></a></var><br>
+<blockquote><p>Reset the current configuration. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>jlink config save</b><var><a name="index-jlink-config-save-101"></a></var><br>
+<blockquote><p>Save the current configuration to the internal persistent storage. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config: <b>jlink pid</b><var> val<a name="index-jlink-pid-102"></a></var><br>
+<blockquote><p>Set the USB PID of the interface. As a configuration command, it can be used only before 'init'. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>parport</b><var><a name="index-parport-103"></a></var><br>
+<blockquote><p>Supports PC parallel port bit-banging cables:
+Wigglers, PLD download cable, and more. 
+These interfaces have several commands, used to configure the driver
+before initializing the JTAG scan chain:
+
+     <div class="defun">
+&mdash; Config Command: <b>parport_cable</b><var> name<a name="index-parport_005fcable-104"></a></var><br>
+<blockquote><p>Set the layout of the parallel port cable used to connect to the target. 
+This is a write-once setting. 
+Currently valid cable <var>name</var> values include:
+
+               <ul>
+<li><b>altium</b> Altium Universal JTAG cable. 
+<li><b>arm-jtag</b> Same as original wiggler except SRST and
+TRST connections reversed and TRST is also inverted. 
+<li><b>chameleon</b> The Amontec Chameleon's CPLD when operated
+in configuration mode. This is only used to
+program the Chameleon itself, not a connected target. 
+<li><b>dlc5</b> The Xilinx Parallel cable III. 
+<li><b>flashlink</b> The ST Parallel cable. 
+<li><b>lattice</b> Lattice ispDOWNLOAD Cable
+<li><b>old_amt_wiggler</b> The Wiggler configuration that comes with
+some versions of
+Amontec's Chameleon Programmer. The new version available from
+the website uses the original Wiggler layout ('<var>wiggler</var>')
+<li><b>triton</b> The parallel port adapter found on the
+&ldquo;Karo Triton 1 Development Board&rdquo;. 
+This is also the layout used by the HollyGates design
+(see <a href="http://www.lartmaker.nl/projects/jtag/">http://www.lartmaker.nl/projects/jtag/</a>). 
+<li><b>wiggler</b> The original Wiggler layout, also supported by
+several clones, such as the Olimex ARM-JTAG
+<li><b>wiggler2</b> Same as original wiggler except an led is fitted on D5. 
+<li><b>wiggler_ntrst_inverted</b> Same as original wiggler except TRST is inverted. 
+</ul>
+          </p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>parport_port</b> [<var>port_number</var>]<var><a name="index-parport_005fport-105"></a></var><br>
+<blockquote><p>Display either the address of the I/O port
+(default: 0x378 for LPT1) or the number of the <samp><span class="file">/dev/parport</span></samp> device. 
+If a parameter is provided, first switch to use that port. 
+This is a write-once setting.
+
+          <p>When using PPDEV to access the parallel port, use the number of the parallel port:
+<samp><span class="option">parport_port 0</span></samp> (the default). If <samp><span class="option">parport_port 0x378</span></samp> is specified
+you may encounter a problem. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Command: <b>parport_toggling_time</b> [<var>nanoseconds</var>]<var><a name="index-parport_005ftoggling_005ftime-106"></a></var><br>
+<blockquote><p>Displays how many nanoseconds the hardware needs to toggle TCK;
+the parport driver uses this value to obey the
+<samp><span class="command">adapter_khz</span></samp> configuration. 
+When the optional <var>nanoseconds</var> parameter is given,
+that setting is changed before displaying the current value.
+
+          <p>The default setting should work reasonably well on commodity PC hardware. 
+However, you may want to calibrate for your specific hardware. 
+<blockquote>
+<b>Tip:</b> To measure the toggling time with a logic analyzer or a digital storage
+oscilloscope, follow the procedure below:
+          <pre class="example">               &gt; parport_toggling_time 1000
+               &gt; adapter_khz 500
+</pre>
+          <p>This sets the maximum JTAG clock speed of the hardware, but
+the actual speed probably deviates from the requested 500 kHz. 
+Now, measure the time between the two closest spaced TCK transitions. 
+You can use <samp><span class="command">runtest 1000</span></samp> or something similar to generate a
+large set of samples. 
+Update the setting to match your measurement:
+          <pre class="example">               &gt; parport_toggling_time &lt;measured nanoseconds&gt;
+</pre>
+          <p>Now the clock speed will be a better match for <samp><span class="command">adapter_khz rate</span></samp>
+commands given in OpenOCD scripts and event handlers.
+
+          <p>You can do something similar with many digital multimeters, but note
+that you'll probably need to run the clock continuously for several
+seconds before it decides what clock rate to show.  Adjust the
+toggling time up or down until the measured clock rate is a good
+match for the adapter_khz rate you specified; be conservative. 
+</blockquote>
+          </p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>parport_write_on_exit</b> (<samp><span class="option">on</span></samp><var>|</var><samp><span class="option">off</span></samp>)<var><a name="index-parport_005fwrite_005fon_005fexit-107"></a></var><br>
+<blockquote><p>This will configure the parallel driver to write a known
+cable-specific value to the parallel interface on exiting OpenOCD. 
+</p></blockquote></div>
+
+     <p>For example, the interface configuration file for a
+classic &ldquo;Wiggler&rdquo; cable on LPT2 might look something like this:
+
+     <pre class="example">          interface parport
+          parport_port 0x278
+          parport_cable wiggler
+</pre>
+     </blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>presto</b><var><a name="index-presto-108"></a></var><br>
+<blockquote><p>ASIX PRESTO USB JTAG programmer.
+
+     <div class="defun">
+&mdash; Config Command: <b>presto_serial</b><var> serial_string<a name="index-presto_005fserial-109"></a></var><br>
+<blockquote><p>Configures the USB serial number of the Presto device to use. 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>rlink</b><var><a name="index-rlink-110"></a></var><br>
+<blockquote><p>Raisonance RLink USB adapter
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>usbprog</b><var><a name="index-usbprog-111"></a></var><br>
+<blockquote><p>usbprog is a freely programmable USB adapter. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>vsllink</b><var><a name="index-vsllink-112"></a></var><br>
+<blockquote><p>vsllink is part of Versaloon which is a versatile USB programmer.
+
+     <blockquote>
+<b>Note:</b> This defines quite a few driver-specific commands,
+which are not currently documented here. 
+</blockquote>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>hla</b><var><a name="index-hla-113"></a></var><br>
+<blockquote><p>This is a driver that supports multiple High Level Adapters. 
+This type of adapter does not expose some of the lower level api's
+that OpenOCD would normally use to access the target.
+
+     <p>Currently supported adapters include the ST STLINK and TI ICDI.
+
+     <div class="defun">
+&mdash; Config Command: <b>hla_device_desc</b><var> description<a name="index-hla_005fdevice_005fdesc-114"></a></var><br>
+<blockquote><p>Currently Not Supported. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>hla_serial</b><var> serial<a name="index-hla_005fserial-115"></a></var><br>
+<blockquote><p>Currently Not Supported. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>hla_layout</b> (<samp><span class="option">stlink</span></samp><var>|</var><samp><span class="option">icdi</span></samp>)<var><a name="index-hla_005flayout-116"></a></var><br>
+<blockquote><p>Specifies the adapter layout to use. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>hla_vid_pid</b><var> vid pid<a name="index-hla_005fvid_005fpid-117"></a></var><br>
+<blockquote><p>The vendor ID and product ID of the device. 
+</p></blockquote></div>
+
+     <div class="defun">
+&mdash; Config Command: <b>stlink_api</b><var> api_level<a name="index-stlink_005fapi-118"></a></var><br>
+<blockquote><p>Manually sets the stlink api used, valid options are 1 or 2. (<b>STLINK Only</b>). 
+</p></blockquote></div>
+     </p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>opendous</b><var><a name="index-opendous-119"></a></var><br>
+<blockquote><p>opendous-jtag is a freely programmable USB adapter. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>ulink</b><var><a name="index-ulink-120"></a></var><br>
+<blockquote><p>This is the Keil ULINK v1 JTAG debugger. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Interface Driver: <b>ZY1000</b><var><a name="index-ZY1000-121"></a></var><br>
+<blockquote><p>This is the Zylin ZY1000 JTAG debugger. 
+</p></blockquote></div>
+
+<blockquote>
+<b>Note:</b> This defines some driver-specific commands,
+which are not currently documented here. 
+</blockquote>
+
+<div class="defun">
+&mdash; Command: <b>power</b> [<samp><span class="option">on</span></samp><var>|</var><samp><span class="option">off</span></samp>]<var><a name="index-power-122"></a></var><br>
+<blockquote><p>Turn power switch to target on/off. 
+No arguments: print status. 
+</p></blockquote></div>
+
+<h3 class="section">8.3 Transport Configuration</h3>
+
+<p><a name="index-Transport-123"></a>As noted earlier, depending on the version of OpenOCD you use,
+and the debug adapter you are using,
+several transports may be available to
+communicate with debug targets (or perhaps to program flash memory).
+
+<div class="defun">
+&mdash; Command: <b>transport list</b><var><a name="index-transport-list-124"></a></var><br>
+<blockquote><p>displays the names of the transports supported by this
+version of OpenOCD. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>transport select</b><var> transport_name<a name="index-transport-select-125"></a></var><br>
+<blockquote><p>Select which of the supported transports to use in this OpenOCD session. 
+The transport must be supported by the debug adapter hardware  and by the
+version of OPenOCD you are using (including the adapter's driver). 
+No arguments: returns name of session's selected transport. 
+</p></blockquote></div>
+
+<h4 class="subsection">8.3.1 JTAG Transport</h4>
+
+<p><a name="index-JTAG-126"></a>JTAG is the original transport supported by OpenOCD, and most
+of the OpenOCD commands support it. 
+JTAG transports expose a chain of one or more Test Access Points (TAPs),
+each of which must be explicitly declared. 
+JTAG supports both debugging and boundary scan testing. 
+Flash programming support is built on top of debug support.
+
+<h4 class="subsection">8.3.2 SWD Transport</h4>
+
+<p><a name="index-SWD-127"></a><a name="index-Serial-Wire-Debug-128"></a>SWD (Serial Wire Debug) is an ARM-specific transport which exposes one
+Debug Access Point (DAP, which must be explicitly declared. 
+(SWD uses fewer signal wires than JTAG.) 
+SWD is debug-oriented, and does not support  boundary scan testing. 
+Flash programming support is built on top of debug support. 
+(Some processors support both JTAG and SWD.)
+
+<div class="defun">
+&mdash; Command: <b>swd newdap</b><var> ...<a name="index-swd-newdap-129"></a></var><br>
+<blockquote><p>Declares a single DAP which uses SWD transport. 
+Parameters are currently the same as "jtag newtap" but this is
+expected to change. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Command: <b>swd wcr trn prescale</b><var><a name="index-swd-wcr-trn-prescale-130"></a></var><br>
+<blockquote><p>Updates TRN (turnaraound delay) and prescaling.fields of the
+Wire Control Register (WCR). 
+No parameters: displays current settings. 
+</p></blockquote></div>
+
+<h4 class="subsection">8.3.3 SPI Transport</h4>
+
+<p><a name="index-SPI-131"></a><a name="index-Serial-Peripheral-Interface-132"></a>The Serial Peripheral Interface (SPI) is a general purpose transport
+which uses four wire signaling.  Some processors use it as part of a
+solution for flash programming.
+
+<p><a name="JTAG-Speed"></a>
+
+<h3 class="section">8.4 JTAG Speed</h3>
+
+<p>JTAG clock setup is part of system setup. 
+It <em>does not belong with interface setup</em> since any interface
+only knows a few of the constraints for the JTAG clock speed. 
+Sometimes the JTAG speed is
+changed during the target initialization process: (1) slow at
+reset, (2) program the CPU clocks, (3) run fast. 
+Both the "slow" and "fast" clock rates are functions of the
+oscillators used, the chip, the board design, and sometimes
+power management software that may be active.
+
+<p>The speed used during reset, and the scan chain verification which
+follows reset, can be adjusted using a <code>reset-start</code>
+target event handler. 
+It can then be reconfigured to a faster speed by a
+<code>reset-init</code> target event handler after it reprograms those
+CPU clocks, or manually (if something else, such as a boot loader,
+sets up those clocks). 
+See <a href="Target-Events.html#Target-Events">Target Events</a>. 
+When the initial low JTAG speed is a chip characteristic, perhaps
+because of a required oscillator speed, provide such a handler
+in the target config file. 
+When that speed is a function of a board-specific characteristic
+such as which speed oscillator is used, it belongs in the board
+config file instead. 
+In both cases it's safest to also set the initial JTAG clock rate
+to that same slow speed, so that OpenOCD never starts up using a
+clock speed that's faster than the scan chain can support.
+
+<pre class="example">     jtag_rclk 3000
+     $_TARGET.cpu configure -event reset-start { jtag_rclk 3000 }
+</pre>
+<p>If your system supports adaptive clocking (RTCK), configuring
+JTAG to use that is probably the most robust approach. 
+However, it introduces delays to synchronize clocks; so it
+may not be the fastest solution.
+
+<p><b>NOTE:</b> Script writers should consider using <samp><span class="command">jtag_rclk</span></samp>
+instead of <samp><span class="command">adapter_khz</span></samp>, but only for (ARM) cores and boards
+which support adaptive clocking.
+
+<div class="defun">
+&mdash; Command: <b>adapter_khz</b><var> max_speed_kHz<a name="index-adapter_005fkhz-133"></a></var><br>
+<blockquote><p>A non-zero speed is in KHZ. Hence: 3000 is 3mhz. 
+JTAG interfaces usually support a limited number of
+speeds.  The speed actually used won't be faster
+than the speed specified.
+
+     <p>Chip data sheets generally include a top JTAG clock rate. 
+The actual rate is often a function of a CPU core clock,
+and is normally less than that peak rate. 
+For example, most ARM cores accept at most one sixth of the CPU clock.
+
+     <p>Speed 0 (khz) selects RTCK method. 
+See <a href="FAQ-RTCK.html#FAQ-RTCK">FAQ RTCK</a>. 
+If your system uses RTCK, you won't need to change the
+JTAG clocking after setup. 
+Not all interfaces, boards, or targets support &ldquo;rtck&rdquo;. 
+If the interface device can not
+support it, an error is returned when you try to use RTCK. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: <b>jtag_rclk</b><var> fallback_speed_kHz<a name="index-jtag_005frclk-134"></a></var><br>
+<blockquote><p><a name="index-adaptive-clocking-135"></a><a name="index-RTCK-136"></a>This Tcl proc (defined in <samp><span class="file">startup.tcl</span></samp>) attempts to enable RTCK/RCLK. 
+If that fails (maybe the interface, board, or target doesn't
+support it), falls back to the specified frequency.
+     <pre class="example">          # Fall back to 3mhz if RTCK is not supported
+          jtag_rclk 3000
+</pre>
+     </blockquote></div>
+
+</body></html>
+
