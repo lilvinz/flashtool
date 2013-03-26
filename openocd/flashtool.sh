@@ -31,4 +31,4 @@ echo "****************************"
 echo "* F E R T I G !            *"
 echo "****************************"
 
-
+read -n1 -r -p "Press any key to continue..." key
