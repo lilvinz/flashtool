@@ -115,7 +115,7 @@ endef
 # Expand the copy rules
 $(foreach file, $(PACKAGE_FILES), $(eval $(call COPY_TEMPLATE,$(file),$(PACKAGE_DIR))))
 
-$(PACKAGE_DIR)/version.txt:
+$(PACKAGE_DIR)/version.txt: | $(PACKAGE_DIR)
 	@echo $(MSG_VERSION) $(call toprel, $@)
 	$(V1) echo $(PACKAGE_NAME) > $@
 
