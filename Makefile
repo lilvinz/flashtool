@@ -43,10 +43,17 @@ else
     quote :=
 endif
 
-MSG_VERSION            = ${quote} VERSION   $(MSG_EXTRA) ${quote}
-MSG_CLEAN              = ${quote} CLEAN     $(MSG_EXTRA) ${quote}
-MSG_COPY               = ${quote} COPY      $(MSG_EXTRA) ${quote}
-MSG_TAR                = ${quote} TAR       $(MSG_EXTRA) ${quote}
+# Add a board designator to the terse message text
+ifeq ($(ENABLE_MSG_EXTRA),yes)
+    MSG_EXTRA := [$(BUILD_PREFIX)|$(BOARD_NAME)]
+else
+    MSG_EXTRA :=
+endif
+
+MSG_VERSION            = ${quote} VERSION     $(MSG_EXTRA) ${quote}
+MSG_CLEAN              = ${quote} CLEAN       $(MSG_EXTRA) ${quote}
+MSG_COPY               = ${quote} COPY        $(MSG_EXTRA) ${quote}
+MSG_TAR                = ${quote} TAR         $(MSG_EXTRA) ${quote}
 
 toprel = $(subst $(realpath $(TOP))/,,$(abspath $(1)))
 
