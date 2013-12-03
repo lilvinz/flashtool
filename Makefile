@@ -8,7 +8,6 @@ SHELL := /bin/bash
 endif
 
 WHEREAMI := $(dir $(lastword $(MAKEFILE_LIST)))
-TOP ?= $(realpath $(WHEREAMI)/)/
 
 # Decide on a verbosity level based on the V= parameter
 export AT := @
@@ -50,18 +49,18 @@ else
     MSG_EXTRA :=
 endif
 
-MSG_VERSION            = ${quote} VERSION     $(MSG_EXTRA) ${quote}
-MSG_CLEAN              = ${quote} CLEAN       $(MSG_EXTRA) ${quote}
-MSG_COPY               = ${quote} COPY        $(MSG_EXTRA) ${quote}
-MSG_TAR                = ${quote} TAR         $(MSG_EXTRA) ${quote}
+MSG_VERSION            = ${quote} VERSION     $(MSG_EXTRA)${quote}
+MSG_CLEAN              = ${quote} CLEAN       $(MSG_EXTRA)${quote}
+MSG_COPY               = ${quote} COPY        $(MSG_EXTRA)${quote}
+MSG_TAR                = ${quote} TAR         $(MSG_EXTRA)${quote}
 
-toprel = $(subst $(realpath $(TOP))/,,$(abspath $(1)))
+toprel = $(subst $(realpath $(ROOT_DIR))/,,$(abspath $(1)))
 
 # incoming parameters
 PRODUCT_NAME ?= unnamed
 PRODUCT_FILES ?= 
 PROGRAMMER ?= openocd
-BUILD_DIR ?= $(TOP)build/
+BUILD_DIR ?= $(ROOT_DIR)/build
 
 
 GIT_DATE := $(shell $(GIT) log -n1 --no-color --format=format:%ci HEAD)
