@@ -23,7 +23,7 @@ if not %ERRORLEVEL% == 0 (
     echo ******************************************************************************
 )
 
-dfu-util_win32\dfu-util-static.exe %DFUUTIL_COMMANDLINE%
+avrdude_win32\avrdude.exe %AVRDUDE_COMMANDLINE%
 
 echo ****************************
 echo * F E R T I G !            *

@@ -22,9 +22,9 @@ if [ ! $? = "0" ]; then
 fi
 
 # ensure that binary is executable which may depend on the way it has been extracted from archive
-chmod +x ./dfu-util_linux_amd64/dfu-util
+chmod +x ./avrdude_linux_amd64/avrdude
 
-./dfu-util_linux_amd64/dfu-util $DFUUTIL_COMMANDLINE
+./avrdude_linux_amd64/avrdude $AVRDUDE_COMMANDLINE
 
 echo "****************************"
 echo "* F E R T I G !            *"
