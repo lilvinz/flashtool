@@ -20,7 +20,6 @@ if not %ERRORLEVEL% == 0 (
     echo ******************************************************************************
     echo ******************************************************************************
     echo ******************************************************************************
-
 )
 
 openocd_win32\bin\openocd.exe -s openocd_win32 %OPENOCD_COMMANDLINE%
@@ -28,6 +27,5 @@ openocd_win32\bin\openocd.exe -s openocd_win32 %OPENOCD_COMMANDLINE%
 echo ****************************
 echo * F I N I S H E D !        *
 echo ****************************
-
 
 pause
